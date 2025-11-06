@@ -1,16 +1,21 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from config import ADMIN_ID, PAGE_SIZE
-from locales import get_text, _
+from config import ADMIN_ID, PAGE_SIZE, DEFAULT_LOCALE
+from locales import get_text, get_user_locale
 from services.tickets import ticket_service
 from services.bans import ban_manager
 from storage.data_manager import data_manager
-from storage.instruction_store import INSTRUCTION_MESSAGES, SEARCH_RESULT_MESSAGES, INBOX_MENU_MESSAGES
+from storage.instruction_store import ADMIN_SCREEN_MESSAGES
 from utils.formatters import format_ticket_brief, format_ticket_card, format_ticket_preview
-from utils.admin_screen import show_admin_screen, reset_admin_screen
+from utils.admin_screen import show_admin_screen, reset_admin_screen, clear_all_admin_screens
 
 logger = logging.getLogger(__name__)
+
+def _get_user_lang(user_id: int) -> str:
+    """Get user language from locales module or config default"""
+    lang = get_user_locale(user_id)
+    return lang if lang else DEFAULT_LOCALE
 
 async def inbox_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming tickets inbox"""
@@ -26,21 +31,24 @@ async def inbox_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Display ticket list with pagination and filtering"""
+    user = update.effective_user
+    user_lang = _get_user_lang(user.id)
+
     logger.info(f"🔍 DEBUG: PAGE_SIZE = {PAGE_SIZE}")
 
     filter_status = context.user_data.get("inbox_filter", "all")
     page = context.user_data.get("inbox_page", 0)
 
-    # Get tickets
+    # Fetch tickets based on filter status
     if filter_status == "all":
         tickets = data_manager.get_all_tickets()
     else:
         tickets = data_manager.get_tickets_by_status(filter_status)
 
-    # Sort by creation date (newest first)
+    # Sort tickets by creation date (newest first)
     tickets = sorted(tickets, key=lambda t: t.created_at, reverse=True)
 
-    # Pagination
+    # Calculate pagination
     total_tickets = len(tickets)
     total_pages = max(1, (total_tickets + PAGE_SIZE - 1) // PAGE_SIZE)
     start_idx = page * PAGE_SIZE
@@ -51,22 +59,22 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Translate filter status names
     filter_names = {
-        "all": _("inbox.filter_all"),
-        "new": _("inbox.filter_new"),
-        "working": _("inbox.filter_working"),
-        "done": _("inbox.filter_done")
+        "all": get_text("inbox.filter_all", lang=user_lang),
+        "new": get_text("inbox.filter_new", lang=user_lang),
+        "working": get_text("inbox.filter_working", lang=user_lang),
+        "done": get_text("inbox.filter_done", lang=user_lang)
     }
     filter_display = filter_names.get(filter_status, filter_status)
 
-    # Format text
+    # Format message text
     if not page_tickets:
-        text = f"📥 **{_('inbox.title')}** ({filter_display})\n\n{_('inbox.no_tickets')}"
+        text = f"📥 **{get_text('inbox.title', lang=user_lang)}** ({filter_display})\n\n{get_text('inbox.no_tickets', lang=user_lang)}"
     else:
-        header = f"📥 **{_('inbox.title')}** ({filter_display}) | {_('inbox.page', page=page+1, total=total_pages)}\n\n"
+        header = f"📥 **{get_text('inbox.title', lang=user_lang)}** ({filter_display}) | {get_text('inbox.page', lang=user_lang, page=page+1, total=total_pages)}\n\n"
         previews = [format_ticket_preview(t) for t in page_tickets]
         text = header + "\n".join(previews)
 
-    # Filter buttons
+    # Build filter buttons
     filter_row = []
     for flt in ["all", "new", "working", "done"]:
         label = filter_names[flt]
@@ -78,20 +86,20 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
 
-    # Pagination buttons
+    # Build pagination buttons
     nav_row = []
     if page > 0:
-        nav_row.append(InlineKeyboardButton(f"◀️ {_('buttons.back')}", callback_data=f"inbox_page:{page-1}"))
+        nav_row.append(InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data=f"inbox_page:{page-1}"))
     if page < total_pages - 1:
-        nav_row.append(InlineKeyboardButton(f"{_('buttons.forward')} ▶️", callback_data=f"inbox_page:{page+1}"))
+        nav_row.append(InlineKeyboardButton(f"{get_text('buttons.forward', lang=user_lang)} ▶️", callback_data=f"inbox_page:{page+1}"))
 
     # Search button (with localization)
-    search_row = [InlineKeyboardButton(_("search.button"), callback_data="search_ticket_start")]
+    search_row = [InlineKeyboardButton(get_text("search.button", lang=user_lang), callback_data="search_ticket_start")]
 
     # Main menu button
-    home_row = [InlineKeyboardButton(f"{_('ui.home_emoji')} {_('buttons.main_menu')}", callback_data="admin_home")]
+    home_row = [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
 
-    # Build keyboard
+    # Build complete keyboard
     keyboard_rows = [filter_row]
     if nav_row:
         keyboard_rows.append(nav_row)
@@ -100,47 +108,32 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = InlineKeyboardMarkup(keyboard_rows)
 
-    # 🗑️ Delete old inbox menu message (if exists)
-    old_inbox_msg_id = INBOX_MENU_MESSAGES.get(ADMIN_ID)
-    if old_inbox_msg_id:
-        try:
-            await context.bot.delete_message(chat_id=ADMIN_ID, message_id=old_inbox_msg_id)
-            logger.info(f"✅ Deleted old inbox menu: {old_inbox_msg_id}")
-        except Exception as e:
-            logger.error(f"Failed to delete old inbox menu: {e}")
-
-    # ✨ Send NEW inbox menu
-    msg = await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=text,
-        reply_markup=keyboard
-    )
-
-    # 💾 Save message_id of new inbox menu
-    INBOX_MENU_MESSAGES[ADMIN_ID] = msg.message_id
-    logger.info(f"✅ Saved new inbox menu: {msg.message_id}")
+    await show_admin_screen(update, context, text, keyboard)
 
 async def show_ticket_card(update: Update, context: ContextTypes.DEFAULT_TYPE, ticket_id: str):
     """Display full ticket card"""
+    user = update.effective_user
+    user_lang = _get_user_lang(user.id)
+
     ticket = ticket_service.get_ticket(ticket_id)
 
     if not ticket:
-        await show_admin_screen(update, context, _("messages.ticket_not_found"), None)
+        await show_admin_screen(update, context, get_text("messages.ticket_not_found", lang=user_lang), None)
         return
 
     text = format_ticket_card(ticket)
 
-    # Action buttons
+    # Build action buttons based on ticket status
     actions = []
 
     if ticket.status == "new":
-        actions.append([InlineKeyboardButton(_("admin.take"), callback_data=f"take:{ticket_id}")])
+        actions.append([InlineKeyboardButton(get_text("admin.take", lang=user_lang), callback_data=f"take:{ticket_id}")])
     elif ticket.status == "working":
-        actions.append([InlineKeyboardButton(_("admin.reply"), callback_data=f"reply:{ticket_id}")])
-        actions.append([InlineKeyboardButton(_("admin.close"), callback_data=f"close:{ticket_id}")])
+        actions.append([InlineKeyboardButton(get_text("admin.reply", lang=user_lang), callback_data=f"reply:{ticket_id}")])
+        actions.append([InlineKeyboardButton(get_text("admin.close", lang=user_lang), callback_data=f"close:{ticket_id}")])
 
-    actions.append([InlineKeyboardButton(f"◀️ {_('buttons.back')}", callback_data="admin_inbox")])
-    actions.append([InlineKeyboardButton(f"{_('ui.home_emoji')} {_('buttons.main_menu')}", callback_data="admin_home")])
+    actions.append([InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data="admin_inbox")])
+    actions.append([InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")])
 
     keyboard = InlineKeyboardMarkup(actions)
 
@@ -149,6 +142,7 @@ async def show_ticket_card(update: Update, context: ContextTypes.DEFAULT_TYPE, t
 async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Display statistics"""
     user = update.effective_user
+    user_lang = _get_user_lang(user.id)
 
     if user.id != ADMIN_ID:
         return
@@ -157,17 +151,18 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     banned_count = len(ban_manager.get_banned_list())
     stats["banned_count"] = banned_count
 
-    text = _("admin.stats_text", **stats)
+    text = get_text("admin.stats_text", lang=user_lang, **stats)
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"{_('ui.home_emoji')} {_('buttons.main_menu')}", callback_data="admin_home")]
+        [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
     ])
 
     await show_admin_screen(update, context, text, keyboard)
 
 async def settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Display settings"""
+    """Display settings menu"""
     user = update.effective_user
+    user_lang = _get_user_lang(user.id)
 
     if user.id != ADMIN_ID:
         return
@@ -176,13 +171,14 @@ async def settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await show_admin_screen(
         update, context,
-        _("admin.settings"),
-        get_settings_keyboard()
+        get_text("admin.settings", lang=user_lang),
+        get_settings_keyboard(user_lang)
     )
 
 async def home_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Display admin main menu"""
     user = update.effective_user
+    user_lang = _get_user_lang(user.id)
 
     if user.id != ADMIN_ID:
         return
@@ -191,13 +187,14 @@ async def home_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await show_admin_screen(
         update, context,
-        _("admin.welcome"),
-        get_admin_main_keyboard()
+        get_text("admin.welcome", lang=user_lang),
+        get_admin_main_keyboard(user_lang)
     )
 
 async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle text messages from admin"""
     user = update.effective_user
+    user_lang = _get_user_lang(user.id)
     text = update.message.text
 
     if user.id != ADMIN_ID:
@@ -206,7 +203,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     state = context.user_data.get("state")
     logger.info(f"🔍 DEBUG admin_text_handler: user_id={user.id}, state={state}, text={text[:20]}")
 
-    # ========== NEW: Search ticket by ID ==========
+    # Search ticket by ID
     if state == "search_ticket_input":
         search_input = text.strip().replace("#", "")
         tickets_list = data_manager.get_all_tickets()
@@ -220,105 +217,189 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         context.user_data["state"] = None
 
-        # 🗑️ Delete search menu message (ticket number input prompt)
+        # GET SAVED message_id (SAME MESSAGE)
         search_menu_msg_id = context.user_data.get("search_menu_msg_id")
-        if search_menu_msg_id:
-            try:
-                await context.bot.delete_message(chat_id=ADMIN_ID, message_id=search_menu_msg_id)
-                logger.info(f"✅ Deleted search menu message_id={search_menu_msg_id}")
-            except Exception as e:
-                logger.error(f"Failed to delete search menu: {e}")
-            context.user_data.pop("search_menu_msg_id", None)
 
-        # 🗑️ Delete user's search input message
+        # Delete only ADMIN'S TEXT (his input)
         try:
             await update.message.delete()
+            logger.info(f"✅ Deleted admin search input message")
         except Exception as e:
-            logger.error(f"Failed to delete search prompt: {e}")
+            logger.debug(f"Search input message already deleted: {e}")
 
-        # 🗑️ Delete previous search result message (if exists)
-        old_msg_id = SEARCH_RESULT_MESSAGES.get(ADMIN_ID)
-        if old_msg_id:
-            try:
-                await context.bot.delete_message(chat_id=ADMIN_ID, message_id=old_msg_id)
-            except Exception as e:
-                logger.error(f"Failed to delete previous search result: {e}")
+        # EDIT IN PLACE (don't create new message!)
+        if search_menu_msg_id:
+            if not found_ticket:
+                # 
+                try:
+                    await context.bot.edit_message_text(
+                        chat_id=ADMIN_ID,
+                        message_id=search_menu_msg_id,
+                        text=get_text("search.not_found", lang=user_lang, ticket_number=search_input),
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton(text=get_text("search.button_new_search", lang=user_lang), callback_data="search_ticket_start"),
+                            InlineKeyboardButton(text=get_text("search.button_cancel", lang=user_lang), callback_data="admin_inbox")
+                        ]]),
+                        parse_mode='HTML'
+                    )
+                    logger.info(f"✅ Updated search result (not found): {search_menu_msg_id}")
+                    return
+                except Exception as e:
+                    logger.error(f"Failed to edit search result: {e}")
+            else:
+                # Ticket found - edit in place
+                try:
+                    await context.bot.edit_message_text(
+                        chat_id=ADMIN_ID,
+                        message_id=search_menu_msg_id,
+                        text=format_ticket_preview(found_ticket),
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton(text=get_text("search.button_open", lang=user_lang), callback_data=f"ticket:{found_ticket.id}")],
+                            [
+                                InlineKeyboardButton(text=get_text("search.button_new_search", lang=user_lang), callback_data="search_ticket_start"),
+                                InlineKeyboardButton(text=get_text("search.button_cancel", lang=user_lang), callback_data="admin_inbox")
+                            ]
+                        ]),
+                        parse_mode='HTML'
+                    )
+                    logger.info(f"✅ Updated search result (found): {search_menu_msg_id}")
+                    return
+                except Exception as e:
+                    logger.error(f"Failed to edit search result: {e}")
 
+        # Fallback: если нет search_menu_msg_id Create new message
         if not found_ticket:
-            # ❌ Not found - send new message
             msg = await context.bot.send_message(
                 chat_id=ADMIN_ID,
-                text=_("search.not_found", ticket_number=search_input),
+                text=get_text("search.not_found", lang=user_lang, ticket_number=search_input),
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton(text=_("search.button_new_search"), callback_data="search_ticket_start"),
-                    InlineKeyboardButton(text=_("search.button_cancel"), callback_data="admin_inbox")
+                    InlineKeyboardButton(text=get_text("search.button_new_search", lang=user_lang), callback_data="search_ticket_start"),
+                    InlineKeyboardButton(text=get_text("search.button_cancel", lang=user_lang), callback_data="admin_inbox")
                 ]])
             )
-            SEARCH_RESULT_MESSAGES[ADMIN_ID] = msg.message_id
-            return
-
-        # ✅ Found - send message with ticket card
-        msg = await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=format_ticket_preview(found_ticket),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(text=_("search.button_open"), callback_data=f"ticket:{found_ticket.id}")],
-                [
-                    InlineKeyboardButton(text=_("search.button_new_search"), callback_data="search_ticket_start"),
-                    InlineKeyboardButton(text=_("search.button_cancel"), callback_data="admin_inbox")
-                ]
-            ])
-        )
-        SEARCH_RESULT_MESSAGES[ADMIN_ID] = msg.message_id
+        else:
+            msg = await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=format_ticket_preview(found_ticket),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(text=get_text("search.button_open", lang=user_lang), callback_data=f"ticket:{found_ticket.id}")],
+                    [
+                        InlineKeyboardButton(text=get_text("search.button_new_search", lang=user_lang), callback_data="search_ticket_start"),
+                        InlineKeyboardButton(text=get_text("search.button_cancel", lang=user_lang), callback_data="admin_inbox")
+                    ]
+                ])
+            )
         return
 
-    # ========== Previous logic ==========
+    # Handle ban user ID input
     if state == "awaiting_ban_user_id":
         try:
             user_id = int(text.strip())
             context.user_data["ban_user_id"] = user_id
             context.user_data["state"] = "awaiting_ban_reason"
 
-            await update.message.reply_text(_("admin.enter_ban_reason"))
+            await update.message.reply_text(get_text("admin.enter_ban_reason", lang=user_lang))
         except ValueError:
-            await update.message.reply_text(_("messages.invalid_id_format"))
+            await update.message.reply_text(get_text("messages.invalid_id_format", lang=user_lang))
+            return
 
+    # Handle ban reason input
     elif state == "awaiting_ban_reason":
         user_id = context.user_data.get("ban_user_id")
         if user_id:
+            #  CHECK - is already banned? AND GET REASON!
+            banned_list = ban_manager.get_banned_list()
+            ban_reason = None
+            
+            for banned_user_id, reason in banned_list:
+                if banned_user_id == user_id:
+                    ban_reason = reason
+                    break
+            
+            if ban_reason:
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data="admin_settings")],
+                    [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
+                ])
+                
+                await update.message.reply_text(
+                    get_text("admin.user_already_banned_reason", lang=user_lang, user_id=user_id, reason=ban_reason),
+                    reply_markup=keyboard
+                )
+                context.user_data["state"] = None
+                return
+
             ban_manager.ban_user(user_id, text)
             context.user_data["state"] = None
 
-            await update.message.reply_text(
-                _("admin.user_banned", user_id=user_id, reason=text)
-            )
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data="admin_settings")],
+                [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
+            ])
 
+            await update.message.reply_text(
+                get_text("admin.user_banned", lang=user_lang, user_id=user_id, reason=text),
+                reply_markup=keyboard
+            )
+        return
+
+    # Handle unban user ID input
     elif state == "awaiting_unban_user_id":
         try:
             user_id = int(text.strip())
+            
+            # CHECK - is banned at all? AND GET REASON!
+            banned_list = ban_manager.get_banned_list()
+            ban_reason = None
+            
+            for banned_user_id, reason in banned_list:
+                if banned_user_id == user_id:
+                    ban_reason = reason
+                    break
+            
+            if not ban_reason:
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data="admin_settings")],
+                    [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
+                ])
+                
+                await update.message.reply_text(
+                    get_text("admin.user_not_banned", lang=user_lang, user_id=user_id),
+                    reply_markup=keyboard
+                )
+                context.user_data["state"] = None
+                return
+            
             ban_manager.unban_user(user_id)
             context.user_data["state"] = None
 
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(f"◀️ {get_text('buttons.back', lang=user_lang)}", callback_data="admin_settings")],
+                [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
+            ])
+
             await update.message.reply_text(
-                _("admin.user_unbanned", user_id=user_id)
+                get_text("admin.user_unbanned_reason", lang=user_lang, user_id=user_id, reason=ban_reason),
+                reply_markup=keyboard
             )
         except ValueError:
-            await update.message.reply_text(_("messages.invalid_id_format"))
+            await update.message.reply_text(get_text("messages.invalid_id_format", lang=user_lang))
+        return
 
+    # Handle admin reply to ticket
     elif state == "awaiting_reply":
         from handlers.user import handle_admin_reply
         await handle_admin_reply(update, context, text)
+        return
 
+    # Default instruction message
     else:
         msg = await update.message.reply_text(
-            _("admin.reply_instruction")
+            get_text("admin.reply_instruction", lang=user_lang)
         )
-        INSTRUCTION_MESSAGES[ADMIN_ID] = msg.message_id
-        logger.info(f"Saved instruction message_id={msg.message_id} for admin {ADMIN_ID}")
+        logger.info(f"Admin needs guidance: {msg.message_id}")
 
-# ========================================
-# ALIASES FOR main.py COMPATIBILITY
-# ========================================
+# Aliases for main.py compatibility
 admin_inbox = inbox_handler
 admin_stats = stats_handler
 admin_settings = settings_handler

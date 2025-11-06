@@ -17,7 +17,9 @@
     "back": "Back",
     "forward": "Next",
     "change_language": "🌐 Change Language",
-    "done": "Done"
+    "done": "Done",
+    "reply": "Reply",
+    "enter_reply": "Enter Reply"
   },
   "messages": {
     "return_to_menu": "Use the menu to select an action.",
@@ -45,7 +47,7 @@
     "ticket_taken": "✅ Ticket {ticket_id} taken",
     "ticket_closed": "✅ Ticket {ticket_id} closed",
     "answer_sent": "✅ Answer sent",
-    "enter_reply": "Enter reply to user:",
+    "enter_reply": "Enter your reply to the user:",
     "choose_language": "🌐 Choose language:",
     "please_choose_from_menu": "⚠️ Please choose an option from the menu:",
     "wait_for_admin_reply": "⏳ Please wait for a reply from the administrator before sending a new message.",
@@ -83,25 +85,34 @@
     "enter_user_id": "Enter user ID to ban:",
     "enter_ban_reason": "Enter ban reason:",
     "user_banned": "✅ User {user_id} banned\nReason: {reason}",
+    "user_already_banned": "⚠️ User {user_id} is already banned",
+    "user_already_banned_reason": "⚠️ User {user_id} is already banned\nReason: {reason}",
     "enter_unban_id": "Enter user ID to unban:",
     "user_unbanned": "✅ User {user_id} unbanned",
+    "user_not_banned": "⚠️ User {user_id} is not banned",
+    "user_unbanned_reason": "✅ User {user_id} unbanned\nBan reason was: {reason}",
     "no_bans": "📋 Ban list is empty",
     "tickets_cleared": "✅ Active tickets cleared",
-    "ban_user": "Ban User",
-    "unban_user": "Unban User",
-    "bans_list": "Ban List",
-    "clear_tickets": "Clear Tickets",
-    "create_backup": "Create Backup",
+    "ban_user": "🚫 Ban User",
+    "unban_user": "✅ Unban User",
+    "bans_list": "📋 Ban List",
+    "clear_tickets": "🗑 Clear Tickets",
+    "create_backup": "💾 Create Backup",
     "backup_created_sent": "✅ Backup created and sent:\n{filename} ({size}MB)",
     "backup_created_saved": "✅ Backup saved on server:\n{filename} ({size}MB)",
     "backup_failed": "❌ Backup creation failed:\n{error}",
-    "change_language": "Change Language",
+    "change_language": "🌐 Change Language",
     "choose_language": "Choose language:",
     "language_changed": "✅ Language changed",
     "take": "✅ Take in progress",
     "reply": "💬 Reply",
     "close": "✅ Close",
-    "reply_instruction": "⚠️ To reply to a ticket:\n1. Press '✅ Take in progress'\n2. Then press '💬 Reply'\n3. Send your message"
+    "reply_instruction": "⚠️ To reply to a ticket:\n1. Press '✅ Take in progress'\n2. Then press '💬 Reply'\n3. Send your message",
+    "review_from": "Review from @{username} (ID: {user_id})",
+    "suggestion_from": "Suggestion from @{username} (ID: {user_id})",
+    "thank_suggestion": "👍 Thank for suggestion",
+    "thank_review": "👍 Thank for review",
+    "thanked": "✓ Thanked"
   },
   "notifications": {
     "new_ticket": "NEW TICKET",
@@ -109,11 +120,10 @@
     "ticket_in_progress": "TICKET IN PROGRESS",
     "ticket_closed": "TICKET CLOSED"
   },
-  "status": {
-    "all": "All",
+  "status_names": {
     "new": "New",
     "working": "In Progress",
-    "done": "Done"
+    "done": "Closed"
   },
   "rating": {
     "excellent": "⭐⭐⭐ Excellent",
@@ -143,7 +153,18 @@
   },
   "ui": {
     "home_emoji": "🏠",
-    "search_emoji": "🔎"
+    "search_emoji": "🔎",
+    "flag_ru": "🇷🇺",
+    "flag_en": "🇺🇸",
+    "back_emoji": "◀️",
+    "from_label": "From",
+    "status_label": "Status",
+    "created_label": "Created",
+    "rating_label": "Rating",
+    "history_label": "Message history",
+    "user_label": "User",
+    "support_label": "Support",
+    "no_messages": "No messages"
   },
   "media_types": {
     "photo": "📷 Photo",

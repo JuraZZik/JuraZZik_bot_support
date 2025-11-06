@@ -9,4 +9,6 @@ COPY . .
 
 RUN mkdir -p /app/bot_data
 
+RUN pip install pytz
+
 CMD ["python", "main.py"]

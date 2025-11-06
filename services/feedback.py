@@ -25,7 +25,7 @@ class FeedbackService:
         if not last_time:
             return True, None
 
-        # ✅ FIXED: Use TIMEZONE directly
+        # FIXED: Use TIMEZONE directly
         elapsed = (datetime.now(TIMEZONE) - last_time).total_seconds()
         need = FEEDBACK_COOLDOWN_HOURS * 3600
 
@@ -42,7 +42,7 @@ class FeedbackService:
 
     def update_last_feedback(self, user_id: int, feedback_type: str):
         """Update last feedback timestamp"""
-        # ✅ FIXED: Use TIMEZONE directly
+        # FIXED: Use TIMEZONE directly
         self.last_feedback[(user_id, feedback_type)] = datetime.now(TIMEZONE)
         logger.info(f"Updated {feedback_type} timestamp for user {user_id}")
 

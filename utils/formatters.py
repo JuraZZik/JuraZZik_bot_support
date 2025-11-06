@@ -1,5 +1,9 @@
 from datetime import datetime
-from config import TIMEZONE
+import pytz
+from config import TIMEZONE, TICKET_HISTORY_LIMIT, ADMIN_ID, DEFAULT_LOCALE
+from locales import _, set_locale
+from storage.data_manager import data_manager
+
 
 def format_ticket_brief(ticket) -> str:
     """Brief ticket preview for list (single line)"""
@@ -9,17 +13,14 @@ def format_ticket_brief(ticket) -> str:
         "done": "✅"
     }.get(ticket.status, "❓")
 
-    # Show username and ID
     if ticket.username:
         username = f"@{ticket.username} (ID:{ticket.user_id})"
     else:
         username = f"ID:{ticket.user_id}"
 
-    # First 30 characters of message
     try:
         if ticket.messages:
             first_msg = ticket.messages[0]
-            # Check type - can be Message object
             if hasattr(first_msg, 'text'):
                 msg_preview = first_msg.text[:30] + "..."
             elif isinstance(first_msg, dict):
@@ -27,66 +28,78 @@ def format_ticket_brief(ticket) -> str:
             else:
                 msg_preview = str(first_msg)[:30] + "..."
         else:
-            msg_preview = "No messages"
+            msg_preview = _("ui.no_messages")
     except Exception:
-        msg_preview = "No messages"
+        msg_preview = _("ui.no_messages")
 
     return f"{status_emoji} {ticket.id} | {username} | {msg_preview}"
 
+
+def _get_local_time(timestamp) -> str:
+    """Convert UTC timestamp to local timezone and return HH:MM format"""
+    if not isinstance(timestamp, datetime):
+        return "00:00"
+
+    try:
+        tz = pytz.timezone(TIMEZONE)
+        if timestamp.tzinfo is None:
+            timestamp = pytz.UTC.localize(timestamp)
+        local_time = timestamp.astimezone(tz)
+        return local_time.strftime("%H:%M")
+    except Exception:
+        return timestamp.strftime("%H:%M")
+
+
 def format_ticket_card(ticket) -> str:
     """Full ticket card with message history"""
-    from config import TICKET_HISTORY_LIMIT  # Import here
+
+    # ADMIN sees in their language! (with translation)
+    admin_data = data_manager.get_user_data(ADMIN_ID)
+    admin_locale = admin_data.get("locale") or DEFAULT_LOCALE
+    set_locale(admin_locale)
 
     status_names = {
-        "new": "New",
-        "working": "In progress",
-        "done": "Closed"
+        "new": _("status_names.new"),
+        "working": _("status_names.working"),
+        "done": _("status_names.done")
     }
 
-    # Show username and ID together
     if ticket.username:
         username = f"@{ticket.username} (ID: {ticket.user_id})"
     else:
         username = f"ID: {ticket.user_id}"
 
     status = status_names.get(ticket.status, ticket.status)
-
     created_str = ticket.created_at.strftime("%d.%m.%Y %H:%M")
 
     lines = [
         f"🎫 Ticket: {ticket.id}",
-        f"👤 From: {username}",
-        f"📊 Status: {status}",
-        f"📅 Created: {created_str}",
+        f"👤 {_('ui.from_label')}: {username}",
+        f"📊 {_('ui.status_label')}: {status}",
+        f"📅 {_('ui.created_label')}: {created_str}",
     ]
 
-    # Add rating if exists
     if hasattr(ticket, 'rating') and ticket.rating:
         rating_texts = {
-            "excellent": "⭐⭐⭐ Excellent",
-            "good": "⭐⭐ Good",
-            "ok": "⭐ Okay"
+            "excellent": _("rating.excellent"),
+            "good": _("rating.good"),
+            "ok": _("rating.ok")
         }
         rating_display = rating_texts.get(ticket.rating, ticket.rating)
-        lines.append(f"⭐ Rating: {rating_display}")
+        lines.append(f"⭐ {_('ui.rating_label')}: {rating_display}")
 
-    lines.extend(["", "📝 Message history:", ""])
+    lines.extend(["", f"📝 {_('ui.history_label')}:", ""])
 
-    # Message history with limit
     if ticket.messages:
-        # If TICKET_HISTORY_LIMIT > 0, show last N messages
         messages_to_show = ticket.messages[-TICKET_HISTORY_LIMIT:] if TICKET_HISTORY_LIMIT > 0 else ticket.messages
 
         for msg in messages_to_show:
             try:
                 # Handle Message object
                 if hasattr(msg, 'sender'):
-                    sender = "👤 User" if msg.sender == "user" else "🛠 Support"
+                    sender = f"👤 {_('ui.user_label')}" if msg.sender == "user" else f"🛠 {_('ui.support_label')}"
                     timestamp = msg.timestamp if hasattr(msg, 'timestamp') else datetime.now()
-                    if hasattr(timestamp, 'strftime'):
-                        time_str = timestamp.strftime("%H:%M")
-                    else:
-                        time_str = str(timestamp)
+                    time_str = _get_local_time(timestamp)
                     text = msg.text if hasattr(msg, 'text') else str(msg)
 
                     lines.append(f"{sender} [{time_str}]:")
@@ -94,12 +107,9 @@ def format_ticket_card(ticket) -> str:
                     lines.append("")
                 # Handle dict
                 elif isinstance(msg, dict):
-                    sender = "👤 User" if msg.get("sender") == "user" else "🛠 Support"
+                    sender = f"👤 {_('ui.user_label')}" if msg.get("sender") == "user" else f"🛠 {_('ui.support_label')}"
                     timestamp = msg.get("timestamp", datetime.now())
-                    if hasattr(timestamp, 'strftime'):
-                        time_str = timestamp.strftime("%H:%M")
-                    else:
-                        time_str = str(timestamp)
+                    time_str = _get_local_time(timestamp)
                     text = msg.get("text", "")
 
                     lines.append(f"{sender} [{time_str}]:")
@@ -112,9 +122,10 @@ def format_ticket_card(ticket) -> str:
                 lines.append(f"• [Display error]")
                 lines.append("")
     else:
-        lines.append("No messages")
+        lines.append(_("ui.no_messages"))
 
     return "\n".join(lines)
+
 
 def format_ticket_preview(ticket) -> str:
     """Ticket preview for inbox list (multi-line)"""
@@ -124,7 +135,6 @@ def format_ticket_preview(ticket) -> str:
         "done": "✅"
     }.get(ticket.status, "❓")
 
-    # Show username and ID
     if ticket.username:
         username = f"@{ticket.username} (ID:{ticket.user_id})"
     else:
@@ -132,7 +142,6 @@ def format_ticket_preview(ticket) -> str:
 
     created_str = ticket.created_at.strftime("%d.%m.%Y %H:%M")
 
-    # Safe preview retrieval
     try:
         if ticket.messages:
             first_msg = ticket.messages[0]
@@ -143,9 +152,9 @@ def format_ticket_preview(ticket) -> str:
             else:
                 msg_preview = str(first_msg)[:100]
         else:
-            msg_preview = "No messages"
+            msg_preview = _("ui.no_messages")
     except Exception:
-        msg_preview = "No messages"
+        msg_preview = _("ui.no_messages")
 
     return (
         f"{status_emoji} {ticket.id}\n"

@@ -10,8 +10,8 @@ from logging.handlers import RotatingFileHandler
 # BOT INFORMATION
 # ========================================
 BOT_NAME = "JuraZZik"
-BOT_VERSION = "2.3.9"
-BOT_BUILD_DATE = "2025-10-29"
+BOT_VERSION = "2.4.1"
+BOT_BUILD_DATE = "2025-11-06"
 
 # ========================================
 # ENVIRONMENT VARIABLES

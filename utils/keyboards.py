@@ -1,33 +1,75 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from locales import get_text
-from locales import _
+from locales import get_text, get_user_locale
+from config import DEFAULT_LOCALE
 
-def get_rating_keyboard(ticket_id: str):
-    """Rating keyboard"""
+def _get_user_lang(user_id: int) -> str:
+    """Get user language from locales module or config default"""
+    lang = get_user_locale(user_id)
+    return lang if lang else DEFAULT_LOCALE
+
+def get_rating_keyboard(ticket_id: str, user_lang: str = None):
+    """Build rating keyboard for ticket quality evaluation"""
+    user_lang = user_lang or DEFAULT_LOCALE
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(_("rating.excellent"), callback_data=f"rate:{ticket_id}:excellent"),
-            InlineKeyboardButton(_("rating.good"), callback_data=f"rate:{ticket_id}:good"),
-            InlineKeyboardButton(_("rating.ok"), callback_data=f"rate:{ticket_id}:ok")
+            InlineKeyboardButton(get_text("rating.excellent", lang=user_lang), callback_data=f"rate:{ticket_id}:excellent"),
+            InlineKeyboardButton(get_text("rating.good", lang=user_lang), callback_data=f"rate:{ticket_id}:good"),
+            InlineKeyboardButton(get_text("rating.ok", lang=user_lang), callback_data=f"rate:{ticket_id}:ok")
         ]
     ])
 
-def get_settings_keyboard():
-    """Settings keyboard"""
+def get_settings_keyboard(user_lang: str = None):
+    """Build settings administration keyboard"""
+    user_lang = user_lang or DEFAULT_LOCALE
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🚫 " + _("admin.ban_user"), callback_data="ban_user")],
-        [InlineKeyboardButton("✅ " + _("admin.unban_user"), callback_data="unban_user")],
-        [InlineKeyboardButton("📋 " + _("admin.bans_list"), callback_data="bans_list")],
-        [InlineKeyboardButton("🗑 " + _("admin.clear_tickets"), callback_data="clear_tickets")],
-        [InlineKeyboardButton("💾 " + _("admin.create_backup"), callback_data="create_backup")],
-        [InlineKeyboardButton("🌐 " + _("admin.change_language"), callback_data="change_language")],
-        [InlineKeyboardButton(f"{get_text('ui.home_emoji')} {_('buttons.main_menu')}", callback_data="admin_home")]
+        [InlineKeyboardButton(get_text("admin.ban_user", lang=user_lang), callback_data="ban_user")],
+        [InlineKeyboardButton(get_text("admin.unban_user", lang=user_lang), callback_data="unban_user")],
+        [InlineKeyboardButton(get_text("admin.bans_list", lang=user_lang), callback_data="bans_list")],
+        [InlineKeyboardButton(get_text("admin.clear_tickets", lang=user_lang), callback_data="clear_tickets")],
+        [InlineKeyboardButton(get_text("admin.create_backup", lang=user_lang), callback_data="create_backup")],
+        [InlineKeyboardButton(get_text("admin.change_language", lang=user_lang), callback_data="change_language")],
+        [InlineKeyboardButton(f"{get_text('ui.home_emoji', lang=user_lang)} {get_text('buttons.main_menu', lang=user_lang)}", callback_data="admin_home")]
     ])
 
-def get_language_keyboard():
-    """Language selection keyboard"""
+def get_language_keyboard(user_lang: str = None):
+    """Build language selection keyboard for ADMIN"""
+    user_lang = user_lang or DEFAULT_LOCALE
+
+    # LOAD EMOJIS FROM JSON!
+    flag_ru = get_text("ui.flag_ru", lang=user_lang)
+    flag_en = get_text("ui.flag_en", lang=user_lang)
+    back_emoji = get_text("ui.back_emoji", lang=user_lang)
+
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇷🇺 Russian", callback_data="lang:ru")],
-        [InlineKeyboardButton("🇬🇧 English", callback_data="lang:en")],
-        [InlineKeyboardButton(f"◀️ {_('buttons.back')}", callback_data="settings")]
+        [
+            InlineKeyboardButton(f"{flag_ru} Русский", callback_data="lang:ru"),
+            InlineKeyboardButton(f"{flag_en} English", callback_data="lang:en")
+        ],
+        [InlineKeyboardButton(f"{back_emoji} {get_text('buttons.back', lang=user_lang)}", callback_data="settings")]
+    ])
+
+def get_user_language_keyboard(user_lang: str = None):
+    """Build language selection keyboard for REGULAR USER"""
+    user_lang = user_lang or DEFAULT_LOCALE
+
+    # LOAD EMOJIS FROM JSON!
+    flag_ru = get_text("ui.flag_ru", lang=user_lang)
+    flag_en = get_text("ui.flag_en", lang=user_lang)
+    back_emoji = get_text("ui.back_emoji", lang=user_lang)
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(f"{flag_ru} Русский", callback_data="user_lang:ru"),
+            InlineKeyboardButton(f"{flag_en} English", callback_data="user_lang:en")
+        ],
+        [InlineKeyboardButton(f"{back_emoji} {get_text('buttons.back', lang=user_lang)}", callback_data="user_home")]
+    ])
+
+def get_admin_main_keyboard(user_lang: str = None):
+    """Build admin main menu keyboard"""
+    user_lang = user_lang or DEFAULT_LOCALE
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(get_text("buttons.inbox", lang=user_lang), callback_data="admin_inbox")],
+        [InlineKeyboardButton(get_text("buttons.stats", lang=user_lang), callback_data="admin_stats")],
+        [InlineKeyboardButton(get_text("buttons.settings", lang=user_lang), callback_data="admin_settings")]
     ])
