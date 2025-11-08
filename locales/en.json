@@ -54,7 +54,8 @@
     "wait_for_admin_reply": "⏳ Please wait for a reply from the administrator before sending a new message.",
     "suggestion_cooldown": "⏳ You already sent a suggestion.\n\nTry again in {hours}h.",
     "review_cooldown": "⏳ You already sent a review.\n\nTry again in {hours}h.",
-    "backup_disabled_full": "❌ Backup feature is disabled"
+    "backup_disabled_full": "❌ Backup feature is disabled",
+    "ticket_auto_closed_user": "⏰ Your ticket {ticket_id} was automatically closed because you didn't respond to our support reply for {hours} hours.\n\nIf you still need help, you can create a new ticket anytime! 💬"
   },
   "search": {
     "prompt": "🔍 Enter ticket number (for example: #123 or just 123)",
@@ -176,6 +177,6 @@
     "stat_total": "├ Total tickets: {count}",
     "stat_users": "└ Users: {count}",
     "backup_created": "💾 Backup created: {info}",
-    "ticket_auto_closed": "⏰ Ticket {ticket_id} auto-closed (no activity for {hours} hours)"
+    "ticket_auto_closed": "⏰ Ticket {ticket_id} auto-closed (user didn't reply for {hours} hours after support response)"
   }
 }

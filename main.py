@@ -11,7 +11,7 @@ from telegram import Update
 
 from config import (
     TOKEN, ADMIN_ID, BOT_API_BASE, REQUEST_TIMEOUT,
-    post_init, post_shutdown
+    post_init, post_shutdown, AUTO_CLOSE_AFTER_HOURS
 )
 from locales import load_locales, set_locale
 from handlers import register_all_handlers
@@ -55,6 +55,7 @@ async def run_bot():
             logger.info("Starting scheduler service...")
             try:
                 from services.scheduler import scheduler_service
+                from services.ticket_auto_close import auto_close_inactive_tickets
 
                 # Start scheduler
                 await scheduler_service.start()
@@ -74,6 +75,17 @@ async def run_bot():
                     86400  # 24 hours in seconds
                 )
                 logger.info("Added job: daily_backup (86400s)")
+
+                # Add auto-close tickets job
+                await scheduler_service.add_job(
+                    "auto_close_tickets",
+                    auto_close_inactive_tickets,
+                    3600  # Check every hour
+                )
+                logger.info(
+                    f"Added job: auto_close_tickets "
+                    f"(check interval: 3600s, timeout: {AUTO_CLOSE_AFTER_HOURS}h)"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to setup scheduler: {e}", exc_info=True)
