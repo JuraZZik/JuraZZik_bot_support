@@ -2,7 +2,7 @@ import os
 import re
 import logging
 from typing import List, Tuple, Optional
-from config import BANNED_FILE, BAN_DEFAULT_REASON, NAME_LINK_REGEX, BAN_ON_NAME_LINK
+from config import BANNED_FILE, BAN_DEFAULT_REASON, NAME_LINK_PATTERN, BAN_ON_NAME_LINK
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class BanManager:
         """Check name for links"""
         if not BAN_ON_NAME_LINK or not name:
             return False
-        pattern = re.compile(NAME_LINK_REGEX, re.IGNORECASE)
+        pattern = re.compile(NAME_LINK_PATTERN, re.IGNORECASE)
         return bool(pattern.search(name))
 
 # Global instance

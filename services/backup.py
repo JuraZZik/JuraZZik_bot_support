@@ -11,14 +11,19 @@ from config import (
     BACKUP_FULL_PROJECT, BACKUP_FILE_LIST,
     BACKUP_EXCLUDE_PATTERNS,
     BACKUP_SEND_TO_TELEGRAM, BACKUP_MAX_SIZE_MB,
-    BACKUP_ENABLED, BACKUP_SOURCE_DIR, LOG_LEVEL
+    BACKUP_ENABLED, BACKUP_SOURCE_DIR
 )
 
 logger = logging.getLogger(__name__)
 
 class BackupService:
-    def create_backup(self) -> Tuple[str, dict]:
-        """Create backup. Returns tuple (backup_path, backup_info)"""
+    def create_backup(self, backup_type: str = "manual") -> Tuple[str, dict]:
+        """
+        Create backup. Returns tuple (backup_path, backup_info)
+
+        Args:
+            backup_type: Type of backup - 'startup', 'shutdown', 'scheduled', 'manual'
+        """
         if not BACKUP_ENABLED:
             logger.info("Backup is disabled by config")
             return "", {}
@@ -28,9 +33,14 @@ class BackupService:
             backup_name = f"{BACKUP_FILE_PREFIX}{timestamp}"
 
             if BACKUP_FULL_PROJECT:
-                return self._create_full_backup(backup_name)
+                backup_path, backup_info = self._create_full_backup(backup_name)
             else:
-                return self._create_files_backup(backup_name)
+                backup_path, backup_info = self._create_files_backup(backup_name)
+
+            # Add backup_type to info
+            backup_info['backup_type'] = backup_type
+
+            return backup_path, backup_info
 
         except Exception as e:
             logger.error(f"Backup creation failed: {e}", exc_info=True)
@@ -44,20 +54,17 @@ class BackupService:
             # *.log, *.pyc → file extension
             if pattern.startswith("*."):
                 if filename.endswith(pattern[1:]):
-                    if LOG_LEVEL == "DEBUG":
-                        logger.info(f"EXCLUDING: {path_str} (ext: {pattern})")
+                    logger.debug(f"EXCLUDING: {path_str} (ext: {pattern})")
                     return True
 
             # backups, venv, __pycache__ → directory in path
             elif "/" + pattern + "/" in "/" + path_str + "/" or path_str.startswith(pattern + "/") or path_str == pattern:
-                if LOG_LEVEL == "DEBUG":
-                    logger.info(f"EXCLUDING: {path_str} (dir: {pattern})")
+                logger.debug(f"EXCLUDING: {path_str} (dir: {pattern})")
                 return True
 
             # bot.log → exact name or starts with pattern (only if pattern > 1 char)
             elif filename == pattern or (len(pattern) > 1 and filename.startswith(pattern)):
-                if LOG_LEVEL == "DEBUG":
-                    logger.info(f"EXCLUDING: {path_str} (name: {pattern})")
+                logger.debug(f"EXCLUDING: {path_str} (name: {pattern})")
                 return True
 
         return False
@@ -101,8 +108,7 @@ class BackupService:
                 excluded_count += 1
                 return None
 
-            if LOG_LEVEL == "DEBUG":
-                logger.debug(f"INCLUDING: {tarinfo.name}")
+            logger.debug(f"INCLUDING: {tarinfo.name}")
             included_count += 1
             return tarinfo
 
@@ -127,7 +133,7 @@ class BackupService:
             "files_in_archive": files_added,
             "size_bytes": backup_size,
             "size_formatted": size_formatted,
-            "size_mb": backup_size / (1024 * 1024)  # For compatibility
+            "size_mb": backup_size / (1024 * 1024)
         }
 
         return backup_path, backup_info
@@ -163,10 +169,98 @@ class BackupService:
             "files_in_archive": files_added,
             "size_bytes": backup_size,
             "size_formatted": size_formatted,
-            "size_mb": backup_size / (1024 * 1024)  # For compatibility
+            "size_mb": backup_size / (1024 * 1024)
         }
 
         return backup_path, backup_info
+
+    async def send_backup_to_telegram(self, backup_path: str, backup_info: dict):
+        """Send backup file to Telegram if enabled"""
+        if not BACKUP_SEND_TO_TELEGRAM:
+            logger.debug("Sending backup to Telegram is disabled")
+            return
+
+        if not backup_path or not os.path.exists(backup_path):
+            logger.warning(f"Backup file not found: {backup_path}")
+            return
+
+        try:
+            from services.alerts import alert_service
+            from locales import get_text
+            from utils.locale_helper import get_admin_language
+
+            # Check if alert service is configured
+            if not alert_service._bot:
+                logger.warning("Alert service not configured, cannot send backup")
+                return
+
+            # Get admin language for proper translations
+            admin_lang = get_admin_language()
+
+            # Get filename
+            filename = os.path.basename(backup_path)
+
+            # Get backup type and format caption header
+            backup_type = backup_info.get('backup_type', 'manual')
+
+            caption_map = {
+                'startup': 'backup_captions.startup',
+                'shutdown': 'backup_captions.shutdown',
+                'scheduled': 'backup_captions.scheduled',
+                'manual': 'backup_captions.manual'
+            }
+
+            caption_key = caption_map.get(backup_type, 'backup_captions.manual')
+
+            # Use get_text with explicit lang parameter
+            try:
+                caption_header = get_text(caption_key, lang=admin_lang)
+            except:
+                # Fallback if translation not found
+                caption_header = f"📦 Backup ({backup_type})"
+
+            # Build detailed caption with translations
+            caption = f"{caption_header}\n\n"
+            caption += f"{filename} ({backup_info.get('size_formatted', 'unknown')})\n\n"
+
+            # Add directory info (for full backups)
+            if backup_info.get('source_dir'):
+                try:
+                    dir_label = get_text('backup_details.directory', lang=admin_lang)
+                except:
+                    dir_label = "Directory"
+                caption += f"📁 {dir_label}: {backup_info.get('source_dir')}\n"
+
+            # Add excluded patterns
+            if backup_info.get('excluded_patterns'):
+                try:
+                    excl_label = get_text('backup_details.excluded', lang=admin_lang)
+                except:
+                    excl_label = "Excluded"
+                caption += f"❌ {excl_label}: {backup_info.get('excluded_patterns')}\n"
+
+            # Add files and size with translations
+            try:
+                files_label = get_text('backup_details.files', lang=admin_lang)
+                size_label = get_text('backup_details.size', lang=admin_lang)
+                file_label = get_text('backup_details.file', lang=admin_lang)
+            except:
+                # Fallback to English
+                files_label = "Files"
+                size_label = "Size"
+                file_label = "File"
+
+            caption += f"📦 {files_label}: {backup_info.get('files_in_archive', 0)}\n"
+            caption += f"💾 {size_label}: {backup_info.get('size_formatted', 'unknown')}\n"
+            caption += f"📝 {file_label}: {filename}"
+
+            # Send using send_backup_file method
+            await alert_service.send_backup_file(backup_path, caption)
+
+            logger.info(f"Backup sent to Telegram: {os.path.basename(backup_path)}")
+
+        except Exception as e:
+            logger.error(f"Failed to send backup to Telegram: {e}", exc_info=True)
 
     def get_backup_size_mb(self, backup_path: str) -> float:
         """Get backup size in MB"""
@@ -183,6 +277,7 @@ class BackupService:
         """Remove old backups"""
         try:
             cutoff = datetime.now(TIMEZONE) - timedelta(days=BACKUP_RETENTION_DAYS)
+            removed_count = 0
 
             for item in os.listdir(BACKUP_DIR):
                 item_path = os.path.join(BACKUP_DIR, item)
@@ -195,9 +290,18 @@ class BackupService:
                 if mtime < cutoff:
                     if os.path.isfile(item_path):
                         os.remove(item_path)
+                        removed_count += 1
+                        logger.info(f"Removed old backup: {item}")
                     elif os.path.isdir(item_path):
                         shutil.rmtree(item_path)
-                    logger.info(f"Removed old backup: {item}")
+                        removed_count += 1
+                        logger.info(f"Removed old backup directory: {item}")
+
+            if removed_count > 0:
+                logger.info(f"Cleanup completed: {removed_count} old backup(s) removed")
+            else:
+                logger.debug(f"No old backups to remove (retention: {BACKUP_RETENTION_DAYS} days)")
+
         except Exception as e:
             logger.error(f"Backup cleanup failed: {e}", exc_info=True)
 

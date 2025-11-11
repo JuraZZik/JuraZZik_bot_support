@@ -303,7 +303,7 @@ async def handle_suggestion_text(update: Update, context: ContextTypes.DEFAULT_T
             [InlineKeyboardButton(get_text("admin.thank_suggestion", lang=admin_lang), callback_data=f"thank:{feedback_id}")]
         ])
 
-        # ✅ ИСПРАВЛЕНО: Правильная подстановка переменных через .format()
+        # Correct substitution of variables through .format()
         suggestion_header = get_text('admin.suggestion_from', lang=admin_lang).format(
             username=user.username or 'unknown',
             user_id=user.id

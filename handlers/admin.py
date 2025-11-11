@@ -337,7 +337,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     [InlineKeyboardButton(get_text('buttons.main_menu', lang=user_lang), callback_data="admin_home")]
                 ])
 
-                # ✅ ИСПРАВЛЕНО: добавлен .format()
+                # Added .format()
                 await update.message.reply_text(
                     get_text("admin.user_already_banned_reason", lang=user_lang).format(user_id=user_id, reason=ban_reason),
                     reply_markup=keyboard
@@ -353,7 +353,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 [InlineKeyboardButton(get_text('buttons.main_menu', lang=user_lang), callback_data="admin_home")]
             ])
 
-            # ✅ ИСПРАВЛЕНО: добавлен .format()
+            # Added .format()
             await update.message.reply_text(
                 get_text("admin.user_banned", lang=user_lang).format(user_id=user_id, reason=text),
                 reply_markup=keyboard
@@ -380,7 +380,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     [InlineKeyboardButton(get_text('buttons.main_menu', lang=user_lang), callback_data="admin_home")]
                 ])
 
-                # ✅ ИСПРАВЛЕНО: добавлен .format()
+                # Added .format()
                 await update.message.reply_text(
                     get_text("admin.user_not_banned", lang=user_lang).format(user_id=user_id),
                     reply_markup=keyboard
@@ -396,7 +396,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 [InlineKeyboardButton(get_text('buttons.main_menu', lang=user_lang), callback_data="admin_home")]
             ])
 
-            # ✅ ИСПРАВЛЕНО: добавлен .format()
+            # Added .format()
             await update.message.reply_text(
                 get_text("admin.user_unbanned_reason", lang=user_lang).format(user_id=user_id, reason=ban_reason),
                 reply_markup=keyboard

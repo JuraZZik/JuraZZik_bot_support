@@ -6,8 +6,8 @@ from config import TIMEZONE
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 from config import (
-    ADMIN_ID, START_ALERT, SHUTDOWN_ALERT, ALERT_CHAT_ID, ALERT_TOPIC_ID,
-    BOT_NAME, BOT_VERSION, BOT_BUILD_DATE
+    ADMIN_ID, START_ALERT, ALERT_CHAT_ID, ALERT_TOPIC_ID,
+    ALERT_PARSE_MODE, BOT_NAME, BOT_VERSION, BOT_BUILD_DATE
 )
 from storage.data_manager import data_manager
 from locales import _, set_locale
@@ -45,7 +45,11 @@ class AlertService:
             return
 
         try:
-            kwargs = {"chat_id": chat_id, "text": text}
+            kwargs = {
+                "chat_id": chat_id,
+                "text": text,
+                "parse_mode": ALERT_PARSE_MODE
+            }
             if ALERT_TOPIC_ID:
                 kwargs["message_thread_id"] = ALERT_TOPIC_ID
 
@@ -77,14 +81,15 @@ class AlertService:
                 logger.warning("No chat_id for backup file")
                 return
 
-            logger.info(f"Sending backup file: {os.path.basename(backup_path)} ({size_mb:.1f}MB)")
+            logger.info(f"Sending backup file: {os.path.basename(backup_path)} ({size_mb:.2f}MB)")
 
             with open(backup_path, 'rb') as f:
                 kwargs = {
                     "chat_id": chat_id,
                     "document": f,
                     "caption": caption,
-                    "filename": os.path.basename(backup_path)
+                    "filename": os.path.basename(backup_path),
+                    "parse_mode": None  # No HTML parsing for caption - prevents < > issues
                 }
                 if ALERT_TOPIC_ID:
                     kwargs["message_thread_id"] = ALERT_TOPIC_ID
@@ -145,79 +150,48 @@ class AlertService:
 
     async def send_startup_alert(self):
         """Bot startup notification"""
-        if START_ALERT:
-            from datetime import datetime
-            from config import TIMEZONE, DATA_DIR, BACKUP_DIR
-
-            self._load_admin_locale()
-
-            now = datetime.now(TIMEZONE).strftime("%d.%m.%Y %H:%M:%S")
-            stats = data_manager.get_stats()
-
-            def check_path(path):
-                if os.path.exists(path):
-                    if os.path.isfile(path):
-                        size = os.path.getsize(path)
-                        return f"✅ ({size / 1024:.1f} KB)"
-                    else:
-                        count = len(os.listdir(path))
-                        files_word = "files"
-                        return f"✅ ({count} {files_word})"
-                return "❌"
-
-            data_json = os.path.join(DATA_DIR, "data.json")
-            log_file = os.path.join(DATA_DIR, "bot.log")
-
-            text = (
-                f"{_('alerts.bot_started')}\n"
-                f"🤖 Bot: {BOT_NAME}\n"
-                f"🔖 Version: {BOT_VERSION}\n"
-                f"📅 Build: {BOT_BUILD_DATE}\n\n"
-                f"{_('alerts.time', time=now)}\n\n"
-                f"{_('alerts.files')}\n"
-                f"{_('alerts.file_data', status=check_path(data_json))}\n"
-                f"{_('alerts.file_log', status=check_path(log_file))}\n"
-                f"{_('alerts.file_backups', status=check_path(BACKUP_DIR))}\n\n"
-                f"{_('alerts.stats')}\n"
-                f"{_('alerts.stat_active', count=stats['active_tickets'])}\n"
-                f"{_('alerts.stat_total', count=stats['total_tickets'])}\n"
-                f"{_('alerts.stat_users', count=stats['total_users'])}"
-            )
-
-            await self.send_alert(text)
-
-    async def send_shutdown_alert(self):
-        """Bot shutdown notification with retry"""
-        if not SHUTDOWN_ALERT:
+        if not START_ALERT:
             return
 
         from datetime import datetime
-        from config import TIMEZONE
+        from config import DATA_DIR, BACKUP_DIR
 
         self._load_admin_locale()
 
         now = datetime.now(TIMEZONE).strftime("%d.%m.%Y %H:%M:%S")
+        stats = data_manager.get_stats()
+
+        def check_path(path):
+            if os.path.exists(path):
+                if os.path.isfile(path):
+                    size = os.path.getsize(path)
+                    return f"✅ ({size / 1024:.1f} KB)"
+                else:
+                    count = len(os.listdir(path))
+                    files_word = "files"
+                    return f"✅ ({count} {files_word})"
+            return "❌"
+
+        data_json = os.path.join(DATA_DIR, "data.json")
+        log_file = os.path.join(DATA_DIR, "bot.log")
 
         text = (
-            f"{_('alerts.bot_stopped')}\n"
+            f"{_('alerts.bot_started')}\n"
             f"🤖 Bot: {BOT_NAME}\n"
             f"🔖 Version: {BOT_VERSION}\n"
             f"📅 Build: {BOT_BUILD_DATE}\n\n"
-            f"{_('alerts.time', time=now)}"
+            f"{_('alerts.time', time=now)}\n\n"
+            f"{_('alerts.files')}\n"
+            f"{_('alerts.file_data', status=check_path(data_json))}\n"
+            f"{_('alerts.file_log', status=check_path(log_file))}\n"
+            f"{_('alerts.file_backups', status=check_path(BACKUP_DIR))}\n\n"
+            f"{_('alerts.stats')}\n"
+            f"{_('alerts.stat_active', count=stats['active_tickets'])}\n"
+            f"{_('alerts.stat_total', count=stats['total_tickets'])}\n"
+            f"{_('alerts.stat_users', count=stats['total_users'])}"
         )
 
-        # Retry logic for reliable delivery
-        for attempt in range(3):
-            try:
-                await self.send_alert(text)
-                logger.info("Shutdown alert sent successfully")
-                return
-            except Exception as e:
-                logger.warning(f"Shutdown alert attempt {attempt + 1}/3 failed: {e}")
-                if attempt < 2:  # Don't wait after last attempt
-                    await asyncio.sleep(1)
-
-        logger.error("Failed to send shutdown alert after 3 attempts")
+        await self.send_alert(text)
 
     async def send_backup_alert(self, backup_info: str):
         """Backup creation notification"""

@@ -55,6 +55,7 @@
     "suggestion_cooldown": "⏳ You already sent a suggestion.\n\nTry again in {hours}h.",
     "review_cooldown": "⏳ You already sent a review.\n\nTry again in {hours}h.",
     "backup_disabled_full": "❌ Backup feature is disabled",
+    "backup_creating": "⏳ Creating backup...",
     "ticket_auto_closed_user": "⏰ Your ticket {ticket_id} was automatically closed because you didn't respond to our support reply for {hours} hours.\n\nIf you still need help, you can create a new ticket anytime! 💬"
   },
   "search": {
@@ -97,7 +98,7 @@
     "bans_list": "📋 Ban List",
     "clear_tickets": "🗑 Clear Tickets",
     "create_backup": "💾 Create Backup",
-    "backup_created_sent": "✅ Backup created:\n{filename} ({size})",
+    "backup_created_sent": "📦 Manual backup created\n\n{filename} ({size})",
     "backup_created_saved": "✅ Backup saved on server:\n{filename} ({size})",
     "backup_failed": "❌ Backup creation failed:\n{error}",
     "backup_directory": "📁 Directory",
@@ -178,5 +179,18 @@
     "stat_users": "└ Users: {count}",
     "backup_created": "💾 Backup created: {info}",
     "ticket_auto_closed": "⏰ Ticket {ticket_id} auto-closed (user didn't reply for {hours} hours after support response)"
+  },
+  "backup_captions": {
+    "startup": "📦 Startup backup created",
+    "shutdown": "📦 Shutdown backup created",
+    "scheduled": "📦 Scheduled backup created",
+    "manual": "📦 Manual backup created"
+  },
+  "backup_details": {
+    "directory": "Directory",
+    "excluded": "Excluded",
+    "files": "Files",
+    "size": "Size",
+    "file": "File"
   }
 }

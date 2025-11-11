@@ -1,6 +1,6 @@
 import re
 from typing import Optional
-from config import NAME_LINK_REGEX, BAN_ON_NAME_LINK
+from config import NAME_LINK_PATTERN, BAN_ON_NAME_LINK
 
 
 def validate_ticket_id(ticket_id: str) -> bool:
@@ -39,7 +39,7 @@ def is_valid_username(username: str) -> bool:
 def has_link_in_name(name: str) -> bool:
     """
     Check for links in username.
-    Uses NAME_LINK_REGEX from config.
+    Uses NAME_LINK_PATTERN from config.
 
     Args:
         name: Username to check
@@ -51,7 +51,7 @@ def has_link_in_name(name: str) -> bool:
         return False
 
     # Use regex from config
-    return bool(re.search(NAME_LINK_REGEX, name, re.IGNORECASE))
+    return bool(re.search(NAME_LINK_PATTERN, name, re.IGNORECASE))
 
 
 def should_ban_for_name_link(name: str) -> bool:

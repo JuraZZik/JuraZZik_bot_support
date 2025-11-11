@@ -10,8 +10,8 @@ from logging.handlers import RotatingFileHandler
 # BOT INFORMATION
 # ========================================
 BOT_NAME = "JuraZZik"
-BOT_VERSION = "2.5.1"
-BOT_BUILD_DATE = "2025-11-07"
+BOT_VERSION = "2.5.8"
+BOT_BUILD_DATE = "2025-11-11"
 
 # ========================================
 # ENVIRONMENT VARIABLES
@@ -61,7 +61,6 @@ if ALERT_TOPIC_ID:
         raise ValueError("ALERT_TOPIC_ID must be a valid integer")
 
 START_ALERT = os.getenv("START_ALERT", "true").lower() == "true"
-SHUTDOWN_ALERT = os.getenv("SHUTDOWN_ALERT", "true").lower() == "true"
 ALERT_PARSE_MODE = os.getenv("ALERT_PARSE_MODE", "HTML")
 ALERT_THROTTLE_SEC = int(os.getenv("ALERT_THROTTLE_SEC", "0"))
 
@@ -99,7 +98,7 @@ AUTO_SAVE_INTERVAL = int(os.getenv("AUTO_SAVE_INTERVAL", "300"))
 BAN_NAME_LINK_CHECK = os.getenv("BAN_NAME_LINK_CHECK", "false").lower() == "true"
 BAN_DEFAULT_REASON = os.getenv("BAN_DEFAULT_REASON", "Нарушение правил")
 BAN_ON_NAME_LINK = os.getenv("BAN_ON_NAME_LINK", "false").lower() == "true"
-NAME_LINK_REGEX = os.getenv("NAME_LINK_REGEX", r"(https?://|www\.|t\.me/|@)")
+NAME_LINK_PATTERN = os.getenv("NAME_LINK_PATTERN", r"(https?://|www\.|t\.me/|@)")
 
 # ========== TICKET SETTINGS ==========
 
@@ -119,7 +118,6 @@ BACKUP_MAX_SIZE_MB = int(os.getenv("BACKUP_MAX_SIZE_MB", "100"))
 BACKUP_ARCHIVE_TAR = True
 STORAGE_BACKUP_INTERVAL_HOURS = int(os.getenv("STORAGE_BACKUP_INTERVAL_HOURS", "24"))
 BACKUP_ON_START = os.getenv("BACKUP_ON_START", "false").lower() == "true"
-BACKUP_ON_STOP = os.getenv("BACKUP_ON_STOP", "false").lower() == "true"
 
 # ========== LOGGING SETTINGS ==========
 
@@ -269,22 +267,138 @@ logger = logging.getLogger(__name__)
 
 async def post_init(application):
     """Initialize after bot startup"""
+
+    # Setup bot menu FIRST
+    logger.info("Setting up bot menu...")
+    try:
+        from utils.menu import setup_bot_menu
+        await setup_bot_menu(application)
+        logger.info("Bot menu configured successfully")
+    except Exception as e:
+        logger.error(f"Failed to setup bot menu: {e}", exc_info=True)
+
+    # Configure alert service
+    try:
+        from services.alerts import alert_service
+        alert_service.set_bot(application.bot)
+        logger.info("Alert service bot configured")
+    except Exception as e:
+        logger.error(f"Failed to configure alert service: {e}", exc_info=True)
+
+    # Start scheduler
     from services.scheduler import scheduler_service
+    from services.ticket_auto_close import auto_close_inactive_tickets
 
     await scheduler_service.start()
     logger.info("Scheduler service started")
 
+    # Add periodic jobs
+    try:
+        # Cleanup logs job
+        async def cleanup_logs_async():
+            from services.logs import log_service
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, log_service.cleanup_old_logs)
+
+        await scheduler_service.add_job(
+            "cleanup_logs",
+            cleanup_logs_async,
+            3600,  # 1 hour
+            run_immediately=False
+        )
+        logger.info("Added job: cleanup_logs (interval: 3600s)")
+
+        # Daily backup job - USE STORAGE_BACKUP_INTERVAL_HOURS
+        async def backup_async():
+            from services.backup import backup_service
+            loop = asyncio.get_event_loop()
+            backup_path, backup_info = await loop.run_in_executor(
+                None, 
+                backup_service.create_backup,
+                "scheduled"  # backup_type for scheduled backups
+            )
+
+            # Send to Telegram if enabled
+            if backup_path and BACKUP_SEND_TO_TELEGRAM:
+                await backup_service.send_backup_to_telegram(backup_path, backup_info)
+
+        backup_interval = STORAGE_BACKUP_INTERVAL_HOURS * 3600
+        await scheduler_service.add_job(
+            "daily_backup",
+            backup_async,
+            backup_interval,
+            run_immediately=False  # Don't run immediately, BACKUP_ON_START handles startup backup
+        )
+        logger.info(f"Added job: daily_backup (interval: {backup_interval}s / {STORAGE_BACKUP_INTERVAL_HOURS}h)")
+
+        # Cleanup old backups job - run daily
+        async def cleanup_backups_async():
+            from services.backup import backup_service
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, backup_service.cleanup_old_backups)
+
+        await scheduler_service.add_job(
+            "cleanup_backups",
+            cleanup_backups_async,
+            86400,  # 24 hours
+            run_immediately=False
+        )
+        logger.info("Added job: cleanup_backups (interval: 86400s)")
+
+        # Auto-close tickets job
+        await scheduler_service.add_job(
+            "auto_close_tickets",
+            auto_close_inactive_tickets,
+            3600,  # 1 hour
+            run_immediately=True  # Check immediately on startup
+        )
+        logger.info("Added job: auto_close_tickets (interval: 3600s)")
+
+    except Exception as e:
+        logger.error(f"Failed to add scheduler jobs: {e}")
+
+    # Backup on start
+    if BACKUP_ON_START and BACKUP_ENABLED:
+        try:
+            from services.backup import backup_service
+            loop = asyncio.get_event_loop()
+            backup_path, backup_info = await loop.run_in_executor(
+                None, 
+                backup_service.create_backup,
+                "startup"  # backup_type for startup backup
+            )
+            logger.info("Startup backup created successfully")
+
+            # Send to Telegram if enabled
+            if backup_path and BACKUP_SEND_TO_TELEGRAM:
+                await backup_service.send_backup_to_telegram(backup_path, backup_info)
+
+        except Exception as e:
+            logger.error(f"Failed to create startup backup: {e}")
+
+    # Send startup alert (at the end)
+    try:
+        from services.alerts import alert_service
+        await alert_service.send_startup_alert()
+        logger.info("Startup alert sent successfully")
+    except Exception as e:
+        logger.error(f"Failed to send startup alert: {e}", exc_info=True)
+
 
 async def post_shutdown(application):
-    """Actions on bot shutdown"""
-    from services.scheduler import scheduler_service
-    from storage.data_manager import data_manager
+    """Actions on bot shutdown - clean and simple"""
 
+    # Stop scheduler
+    from services.scheduler import scheduler_service
     await scheduler_service.stop()
     logger.info("Scheduler service stopped")
 
-    data_manager.save_data()
+    # Save data
+    from storage.data_manager import data_manager
+    data_manager.save()
     logger.info("Data saved on shutdown")
+
+    logger.info("Shutdown complete")
 
 
 logger.info(f"{BOT_NAME} v{BOT_VERSION} (build {BOT_BUILD_DATE}) - configuration loaded")

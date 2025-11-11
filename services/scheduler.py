@@ -23,10 +23,11 @@ class SchedulerService:
         self.jobs = {}  # Store scheduled jobs: {job_id: {'func': callable, 'interval': seconds}}
 
     async def add_job(
-        self, 
-        job_id: str, 
-        func: Callable, 
-        interval_seconds: int
+        self,
+        job_id: str,
+        func: Callable,
+        interval_seconds: int,
+        run_immediately: bool = True
     ):
         """
         Add periodic job to scheduler
@@ -35,14 +36,22 @@ class SchedulerService:
             job_id: Unique job identifier
             func: Async callable to execute
             interval_seconds: Interval between executions in seconds
+            run_immediately: If True, run job immediately on first iteration, 
+                           else wait for interval before first execution
         """
+        # Calculate next run time
+        if run_immediately:
+            next_run = datetime.now()
+        else:
+            next_run = datetime.now() + timedelta(seconds=interval_seconds)
+
         self.jobs[job_id] = {
             'func': func,
             'interval': interval_seconds,
             'last_run': None,
-            'next_run': datetime.now()
+            'next_run': next_run
         }
-        logger.info(f"Added job: {job_id} (interval: {interval_seconds}s)")
+        logger.info(f"Added job: {job_id} (interval: {interval_seconds}s, immediate: {run_immediately})")
 
     async def remove_job(self, job_id: str):
         """
