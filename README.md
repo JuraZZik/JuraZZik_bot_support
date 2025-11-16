@@ -121,13 +121,19 @@ python main.py
 
 ## 📊 Version History
 
-| Version | Date | What's New |
-|---------|------|-----------|
-| 2.5.8 | 11.11.2025 | Latest update |
-| 2.5.1 | 08.11.2025 | Complete auto-close tickets implementation |
-| 2.5.0 | 07.11.2025 | Fixed localization and feedback system |
-| 2.4.1 | 06.11.2025 | Stable version with multi-language support |
-| 2.3.9 | 29.10.2025 | First release |
+## 📈 Versioning
+
+## 📈 Versioning
+
+|Version|Date|Description|
+|--|--|--|
+|2.5.9|2025-11-16|⭐ Rating notifications improvements - username & clickable ticket ID|
+|2.5.8|2025-11-11|Latest update|
+|2.5.1|2025-11-08|⏰ Complete auto-close tickets implementation🆕|
+|2.5.0|2025-11-07|🔧 Fixed localization and feedback system|
+|2.4.1|2025-11-06|✨ Stable version with multi-language support|
+|2.3.9|2025-10-29|🎉 First release|
+
 
 ## 💡 User Workflow
 
