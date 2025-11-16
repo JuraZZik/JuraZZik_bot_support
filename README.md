@@ -2,348 +2,508 @@
 
 > Full-featured Telegram bot for ticket management, feedback collection, and customer support automation
 
-![Version](https://img.shields.io/badge/version-2.5.8-blue)
+![Version](https://img.shields.io/badge/version-2.5.9-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
 ---
 
-## 📋 Description
+# Support Bot Project Overview
 
-**Support Bot** is a scalable ticket management system via Telegram that enables:
+This is a **Telegram bot for managing support tickets** with a complete ticket processing system, feedback collection, and admin panel. The project is written in Python and containerized through Docker.
 
-✅ Users to quickly create tickets without bureaucracy  
-✅ Administrators to manage all tickets from a single interface  
-✅ Feedback collection and support quality tracking  
-✅ Automation of routine operations  
-✅ **Automatic ticket closure when users don't respond** 🆕
+## 🎯 Core Functionality
 
----
+### For Users
 
-## 🚀 Key Features
+- Create tickets with problem descriptions without unnecessary bureaucracy
+- Send feedback and suggestions
+- Rate support quality (1-3 stars)
+- Russian and English language support
+- Spam protection through cooldown system
+- Automatic notifications about ticket closure
 
-### 👤 For Users
+### For Administrator
 
-| Feature | Description |
-|---------|-------------|
-| 📨 **Create Tickets** | Quick ticket creation with problem description |
-| 💬 **Feedback & Suggestions** | Send service quality feedback |
-| ⭐ **Quality Rating** | Rate support (1-3 stars) |
-| 🌐 **Multi-language Support** | Russian and English support |
-| ⏱️ **Spam Protection** | Cooldown system between tickets |
-| 🔔 **Auto-close Notifications** | Get notified when ticket closes automatically 🆕 |
+- Manage all incoming tickets through a single interface
+- Direct message exchange with users
+- Status management: new → in progress → closed
+- Block/unblock users
+- Automatic data backup
+- View statistics and metrics
+- Automatic closure of inactive tickets
 
-### 👨‍💼 For Administrators
+## 🛠️ Tech Stack
 
-| Feature | Description |
-|---------|-------------|
-| 📋 **Admin Panel** | Manage all incoming tickets |
-| 💬 **Direct Replies** | Communicate directly with users |
-| 🔄 **Status Management** | Transitions: new → in progress → closed |
-| 🚫 **User Blocking System** | Block/unblock users |
-| 💾 **Automatic Backups** | Data backup and recovery |
-| 📊 **Statistics** | View metrics and analytics |
-| 📢 **Notifications** | Alerts for new tickets |
-| ⏰ **Auto-close Tickets** | Automatically close inactive tickets 🆕 |
+| Component | Details |
+|-----------|---------|
+| **Language** | Python 3.11+ |
+| **Framework** | python-telegram-bot 21+ |
+| **Data Storage** | JSON (embedded database) |
+| **Containerization** | Docker & Docker Compose |
+| **Localization** | i18n (Russian/English) |
+| **Scheduler** | Asynchronous job scheduler |
 
----
+## 📁 Project Structure
 
-## 🔧 Tech Stack
+```
+bot_support/
+├── main.py                    # Entry point
+├── config.py                  # Configuration
+├── requirements.txt           # Dependencies
+├── docker-compose.yml         # Docker config
+├── .env.example              # Example .env file
+├── handlers/                 # Command handlers
+├── services/                 # Services
+│   ├── tickets.py           # Ticket management
+│   ├── ticket_auto_close.py # Auto-close logic
+│   ├── feedback.py          # Feedback system
+│   ├── scheduler.py         # Job scheduler
+│   └── alerts.py            # Notifications
+├── storage/                 # Data management
+├── locales/                 # Localization (ru, en)
+├── utils/                   # Helper functions
+└── bot_data/               # Data (created automatically)
+    ├── data.json           # Main data
+    ├── banned.json         # Blocked users list
+    ├── bot.log            # Logs
+    └── backups/           # Backups
+```
 
-- **Language:** Python 3.11+
-- **Framework:** python-telegram-bot 21+
-- **Database:** JSON (embedded)
-- **Containerization:** Docker & Docker Compose
-- **Localization:** i18n (Russian/English)
-- **Scheduler:** Async job scheduler for automation
+## 🔑 Key Features
 
----
+### Automatic Ticket Closure (v2.5.1+)
 
-## 📦 Requirements
+- Closes ticket if user doesn't respond within 24 hours (configurable)
+- Sends localized notifications to admin and user
+- Tracks who wrote last — won't close if user is waiting for admin reply
 
-- Docker and Docker Compose
-- Python 3.11+ (for local run)
-- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
-- Telegram User ID of administrator
+**Usage Scenarios:**
 
----
+- **Scenario 1 (closes):** user creates ticket (12:00) → admin replies (12:30) → after 24 hours without user response → auto-closure
+- **Scenario 2 (stays open):** user creates ticket → admin replies → user replies → ticket stays open
 
-## 🚀 Quick Start
+## 📋 Configuration
 
-### 1️⃣ Clone Repository
+### Required Parameters
 
-git clone https://github.com/JuraZZik/bot_support.git
-cd bot_support
+- `BOT_TOKEN` — from @BotFather
+- `ADMIN_ID` — administrator ID (send `/id` to bot)
+- `DEFAULT_LOCALE` — `ru` (Russian) or `en` (English)
 
+### Recommended
 
-### 2️⃣ Configuration
+- `ALERT_CHAT_ID` — group ID for notifications
+- `TIMEZONE` — timezone
+- `AUTO_CLOSE_AFTER_HOURS` — hours before auto-closure (default: 24)
 
-Create `.env` file:
+### Additional Features
 
-🔴 MANDATORY!
-BOT_TOKEN=
-ADMIN_ID=
-DEFAULT_LOCALE=
+- Data backup and recovery
+- Spam protection with configurable cooldown
+- Error notifications
+- Minimum message length requirements
 
-📋 RECOMMENDED (for notifications)
-ALERT_CHAT_ID=
-ALERT_TOPIC_ID=
-START_ALERT=
-SHUTDOWN_ALERT=
-TIMEZONE=
+## 🚀 Deployment
 
-⏰ AUTO-CLOSE SETTINGS (optional)
-AUTO_CLOSE_AFTER_HOURS=
-BOT_TOKEN=
-ADMIN_ID=
-DEFAULT_LOCALE=
+### With Docker Compose (recommended)
 
-📋 RECOMMENDED (for notifications)
-ALERT_CHAT_ID=
-ALERT_TOPIC_ID=
-START_ALERT=
-SHUTDOWN_ALERT=
-TIMEZONE=
-
-⏰ AUTO-CLOSE SETTINGS (optional)
-AUTO_CLOSE_AFTER_HOURS=
-
-
-**Where to find:**
-
-| Parameter | Where to find |
-|-----------|--------------|
-| `BOT_TOKEN` | `@BotFather` → `/newbot` |
-| `ADMIN_ID` | Send `/id` to bot, get your ID |
-| `ALERT_CHAT_ID` | Group ID (send message in debug) |
-| `DEFAULT_LOCALE` | `ru` (Russian) or `en` (English) |
-| `AUTO_CLOSE_AFTER_HOURS` | Hours to wait before auto-closing ticket (default: 24) |
-
-### 3️⃣ Run with Docker
-
+```bash
 docker compose up -d
+```
 
+### Locally
 
-### 4️⃣ Local Run
-
-Install dependencies
+```bash
 pip install -r requirements.txt
-
-Run bot
 python main.py
+```
 
+## 📊 Version History
 
----
+| Version | Date | What's New |
+|---------|------|-----------|
+| 2.5.8 | 11.11.2025 | Latest update |
+| 2.5.1 | 08.11.2025 | Complete auto-close tickets implementation |
+| 2.5.0 | 07.11.2025 | Fixed localization and feedback system |
+| 2.4.1 | 06.11.2025 | Stable version with multi-language support |
+| 2.3.9 | 29.10.2025 | First release |
 
-## 📚 Usage
+## 💡 User Workflow
 
-### For User:
-
-1. Write `/start` to bot
-2. Choose needed menu item
+1. Send `/start` to bot
+2. Choose menu item
 3. Create tickets, send feedback, rate quality
-4. Respond to support replies to keep ticket active
+4. Reply to support messages to keep ticket active
 
-### For Administrator:
+## 🎓 Administrator Workflow
 
-1. Open **Inbox** – view all tickets
-2. Press **Take in progress** – start working with ticket
-3. Press **Reply** – send reply to user
-4. Press **Close** – finish ticket
-5. Check **Statistics** – work analytics
-6. Monitor auto-closed tickets via notifications
+1. Open **Inbox** — view all incoming tickets
+2. Click **Take in progress** — start working on ticket
+3. Click **Reply** — send response to user
+4. Click **Close** — complete ticket
+5. Check **Statistics** — work analytics
+6. Receive notifications about auto-closed tickets
 
 ---
 
-## ⏰ Auto-Close Tickets Feature
+This is a fully functional customer support system via Telegram with minimal infrastructure requirements.
 
-### How It Works
+# .env Configuration Guide - Support Bot
 
-The bot automatically closes tickets when users don't respond after admin replies:
+Complete explanation of all environment variables with examples and descriptions.
 
-1. **Admin replies** to user ticket
-2. **User doesn't respond** within configured timeout (default: 24 hours)
-3. **Ticket closes automatically**
-4. **Notifications sent** to both admin and user in their languages
+---
 
-### Key Features
+## 🔴 MANDATORY SETTINGS (REQUIRED)
 
-- ✅ Only closes tickets where **admin sent last message**
-- ✅ Doesn't close tickets where **user is waiting for admin reply**
-- ✅ **Hourly checks** for inactive tickets
-- ✅ **Localized notifications** for admin and user
-- ✅ **Configurable timeout** via environment variable
+### BOT_TOKEN
+- **What it is:** Your Telegram bot token
+- **Where to get it:** 
+  1. Open Telegram and find [@BotFather](https://t.me/botfather)
+  2. Send `/newbot` command
+  3. Follow instructions and get your token
+- **Format:** String of numbers and characters
+- **Example:** `BOT_TOKEN=123456789:ABCDefGHIjklMNOpqrsTUVwxyz`
+- **Required:** YES - bot won't work without it
 
-### Configuration
+### ADMIN_ID
+- **What it is:** Your Telegram user ID (admin who manages the bot)
+- **Where to get it:**
+  1. Start the bot you created
+  2. Send `/id` command to bot
+  3. Bot replies with your ID
+- **Format:** Integer (numbers only)
+- **Example:** `ADMIN_ID=123456789`
+- **Required:** YES - admin features won't work without it
+- **Note:** Only this ID will have access to admin panel
 
-Set timeout in hours (default: 24)
+### DEFAULT_LOCALE
+- **What it is:** Default language for bot interface
+- **Options:** 
+  - `ru` - Russian (Русский)
+  - `en` - English
+- **Example:** `DEFAULT_LOCALE=ru`
+- **Required:** YES
+- **Note:** Users can still change language in bot menu
+
+---
+
+## 📋 RECOMMENDED SETTINGS (NOTIFICATIONS)
+
+### ALERT_CHAT_ID
+- **What it is:** Chat ID where bot will send notifications
+- **When it's used:** 
+  - Bot startup/shutdown alerts
+  - Error notifications
+  - Important events
+- **Where to get it:**
+  1. Create a group or supergroup
+  2. Add your bot to the group
+  3. Send any message in the group
+  4. Check bot logs to find the chat ID
+  5. Or use debugging tools
+- **Format:** Negative integer for groups, positive for users
+- **Example:** `ALERT_CHAT_ID=-1001234567890`
+- **Required:** NO (but recommended)
+- **Note:** Leave empty if you don't want notifications
+
+### ALERT_TOPIC_ID
+- **What it is:** Topic/thread ID in a supergroup (for organized notifications)
+- **When it's used:** When using Telegram topics feature
+- **Format:** Integer
+- **Example:** `ALERT_TOPIC_ID=123`
+- **Required:** NO
+- **Note:** Only works if ALERT_CHAT_ID is set and is a supergroup with topics
+
+### START_ALERT
+- **What it is:** Message sent when bot starts
+- **When it's used:** On bot startup
+- **Example:** `START_ALERT=Bot started successfully ✅`
+- **Required:** NO
+- **Default:** Bot sends default startup message
+- **Tip:** Use emojis to make it more readable
+
+### SHUTDOWN_ALERT
+- **What it is:** Message sent when bot shuts down
+- **When it's used:** On bot shutdown/restart
+- **Example:** `SHUTDOWN_ALERT=Bot stopped for maintenance 🔧`
+- **Required:** NO
+- **Default:** Bot sends default shutdown message
+
+### TIMEZONE
+- **What it is:** Your timezone for scheduling and timestamps
+- **Format:** IANA timezone format
+- **Common examples:**
+  - `Europe/Moscow` - Moscow time
+  - `Europe/London` - London time
+  - `America/New_York` - New York time
+  - `Asia/Tokyo` - Tokyo time
+- **Example:** `TIMEZONE=Europe/Moscow`
+- **Required:** NO
+- **Default:** UTC if not set
+- **Tip:** Use this to get correct time in logs and alerts
+
+---
+
+## ⏰ AUTO-CLOSE SETTINGS (Automatic Ticket Closure)
+
+### AUTO_CLOSE_AFTER_HOURS
+- **What it is:** Hours to wait before automatically closing inactive tickets
+- **When it's used:**
+  - Admin sends reply to user
+  - User doesn't respond within this time
+  - Bot automatically closes ticket
+- **Format:** Integer (number of hours)
+- **Example:** `AUTO_CLOSE_AFTER_HOURS=24`
+- **Default:** 24 hours (if not set)
+- **Range:** Any positive number
+- **Common values:**
+  - `AUTO_CLOSE_AFTER_HOURS=24` - Close after 1 day (default)
+  - `AUTO_CLOSE_AFTER_HOURS=48` - Close after 2 days
+  - `AUTO_CLOSE_AFTER_HOURS=72` - Close after 3 days
+- **How it works:**
+  1. User creates ticket
+  2. Admin replies (timer starts)
+  3. After X hours without user response
+  4. Ticket closes automatically
+  5. Both admin and user get notification
+- **Note:** Only closes if admin sent the last message
+
+---
+
+## 💾 BACKUP SETTINGS (Data Protection)
+
+### BACKUP_ENABLED
+- **What it is:** Enable/disable automatic backups
+- **Format:** `true` or `false`
+- **Example:** `BACKUP_ENABLED=true`
+- **Default:** false
+- **Purpose:** Protect your data from loss
+- **Recommended:** true (always enable backups!)
+
+### BACKUP_FULL_PROJECT
+- **What it is:** Whether to backup entire project or just data
+- **Format:** `true` or `false`
+- **Example:** `BACKUP_FULL_PROJECT=false`
+- **Options:**
+  - `false` - Backup only bot_data/ folder (data.json, banned.json)
+  - `true` - Backup entire project including code
+- **Recommended:** false (saves space, only data matters)
+
+### BACKUP_SEND_TO_TELEGRAM
+- **What it is:** Send backup files to Telegram for safety
+- **Format:** `true` or `false`
+- **Example:** `BACKUP_SEND_TO_TELEGRAM=true`
+- **Purpose:** 
+  - Cloud backup in case server fails
+  - Easy download from Telegram
+- **How it works:**
+  1. Creates backup file
+  2. Sends it to ALERT_CHAT_ID
+  3. You can download anytime
+- **Recommended:** true (extra safety)
+- **Requires:** ALERT_CHAT_ID to be set
+
+### BACKUP_MAX_SIZE_MB
+- **What it is:** Maximum backup file size in megabytes
+- **Format:** Integer
+- **Example:** `BACKUP_MAX_SIZE_MB=50`
+- **Default:** 50 MB
+- **Purpose:** Limit file size (especially for Telegram upload)
+- **Note:** Telegram has 2GB limit, but 50MB is practical
+
+---
+
+## 🚨 SPAM PROTECTION SETTINGS (Prevent Abuse)
+
+### FEEDBACK_COOLDOWN_ENABLED
+- **What it is:** Enable/disable cooldown between feedback submissions
+- **Format:** `true` or `false`
+- **Example:** `FEEDBACK_COOLDOWN_ENABLED=true`
+- **Purpose:** Prevent users from spamming feedback
+- **Recommended:** true
+
+### FEEDBACK_COOLDOWN_HOURS
+- **What it is:** Hours users must wait between feedback submissions
+- **Format:** Integer (number of hours)
+- **Example:** `FEEDBACK_COOLDOWN_HOURS=24`
+- **Default:** 24 hours
+- **Common values:**
+  - `1` - 1 hour cooldown
+  - `6` - 6 hours cooldown
+  - `24` - 24 hours (1 day)
+- **Purpose:** One user can send feedback only once per X hours
+- **Requires:** FEEDBACK_COOLDOWN_ENABLED=true
+
+### ASK_MIN_LENGTH
+- **What it is:** Minimum characters in ticket/feedback message
+- **Format:** Integer (number of characters)
+- **Example:** `ASK_MIN_LENGTH=10`
+- **Default:** 10 characters
+- **Purpose:** Prevent low-quality, empty, or spam messages
+- **Common values:**
+  - `5` - Very permissive
+  - `10` - Balanced (recommended)
+  - `20` - Strict
+- **How it works:** User message rejected if shorter than this
+
+---
+
+## 🔔 ERROR NOTIFICATION SETTINGS (Monitor Problems)
+
+### ERROR_ALERTS_ENABLED
+- **What it is:** Enable/disable error notifications to admin
+- **Format:** `true` or `false`
+- **Example:** `ERROR_ALERTS_ENABLED=true`
+- **Purpose:** Get notified when bot encounters errors
+- **Recommended:** true (helps with debugging)
+- **Requires:** ALERT_CHAT_ID to be set
+
+### ERROR_ALERT_THROTTLE_SEC
+- **What it is:** Prevent error spam (seconds between error alerts)
+- **Format:** Integer (seconds)
+- **Example:** `ERROR_ALERT_THROTTLE_SEC=300`
+- **Default:** 300 seconds (5 minutes)
+- **Purpose:** 
+  - If same error happens 100 times, notify only once per 5 min
+  - Prevents Telegram spam
+- **Common values:**
+  - `60` - Notify every minute
+  - `300` - Notify every 5 minutes (recommended)
+  - `3600` - Notify every hour
+
+---
+
+## 📝 COMPLETE EXAMPLE .env FILE
+
+```bash
+# ============================================
+# MANDATORY - Bot Connection
+# ============================================
+BOT_TOKEN=123456789:ABCDefGHIjklMNOpqrsTUVwxyz
+ADMIN_ID=987654321
+DEFAULT_LOCALE=ru
+
+# ============================================
+# Notifications & Alerts
+# ============================================
+ALERT_CHAT_ID=-1001234567890
+ALERT_TOPIC_ID=123
+START_ALERT=🤖 Bot started successfully
+SHUTDOWN_ALERT=🛑 Bot stopped
+TIMEZONE=Europe/Moscow
+
+# ============================================
+# Auto-Close Tickets
+# ============================================
 AUTO_CLOSE_AFTER_HOURS=24
 
+# ============================================
+# Backup Settings
+# ============================================
+BACKUP_ENABLED=true
+BACKUP_FULL_PROJECT=false
+BACKUP_SEND_TO_TELEGRAM=true
+BACKUP_MAX_SIZE_MB=50
 
+# ============================================
+# Spam Protection
+# ============================================
+FEEDBACK_COOLDOWN_ENABLED=true
+FEEDBACK_COOLDOWN_HOURS=24
+ASK_MIN_LENGTH=10
 
-### Examples
-
-**Scenario 1: Ticket closes automatically**
-12:00 - User creates ticket (last_actor: user)
-12:30 - Admin replies (last_actor: support)
-36:30 - Check runs: No user response for 24h → CLOSE ✅
-
-
-**Scenario 2: Ticket stays open**
-12:00 - User creates ticket (last_actor: user)
-12:30 - Admin replies (last_actor: support)
-13:00 - User replies (last_actor: user)
-37:00 - Check runs: User waiting for reply → KEEP OPEN ❌
-
-
----
-
-## 🗂️ Project Structure
-
-bot_support/
-├── main.py # Entry point
-├── config.py # Configuration
-├── requirements.txt # Dependencies
-├── docker-compose.yml # Docker config
-├── .env.example # Example .env
-├── handlers/ # Command handlers
-├── services/ # Services
-│ ├── tickets.py # Ticket management
-│ ├── ticket_auto_close.py # Auto-close logic 🆕
-│ ├── feedback.py # Feedback system
-│ ├── scheduler.py # Job scheduler
-│ └── alerts.py # Notifications
-├── storage/ # Data management
-├── locales/ # Localization (ru, en)
-├── utils/ # Helper functions
-└── bot_data/ # Data (created automatically)
-├── data.json # Main data
-├── banned.json # Ban list
-├── bot.log # Logs
-└── backups/ # Backups
-
+# ============================================
+# Error Monitoring
+# ============================================
+ERROR_ALERTS_ENABLED=true
+ERROR_ALERT_THROTTLE_SEC=300
+```
 
 ---
 
-## 🛠️ Additional Configuration
+## 🚀 QUICK START CHECKLIST
 
-### Backups
-
-BACKUP_ENABLED=
-BACKUP_FULL_PROJECT=
-BACKUP_SEND_TO_TELEGRAM=
-BACKUP_MAX_SIZE_MB=
-BACKUP_ENABLED=
-BACKUP_FULL_PROJECT=
-BACKUP_SEND_TO_TELEGRAM=
-BACKUP_MAX_SIZE_MB=
-
-
-### Spam Protection
-
-FEEDBACK_COOLDOWN_ENABLED=
-FEEDBACK_COOLDOWN_HOURS=
-ASK_MIN_LENGTH=
-FEEDBACK_COOLDOWN_ENABLED=
-FEEDBACK_COOLDOWN_HOURS=
-ASK_MIN_LENGTH=
-
-
-### Auto-Close Settings
-
-Enable auto-close (always enabled, timeout configurable)
-AUTO_CLOSE_AFTER_HOURS=24 # Hours to wait for user response
-
-
-### Error Notifications
-
-ERROR_ALERTS_ENABLED=
-ERROR_ALERT_THROTTLE_SEC=
-ERROR_ALERTS_ENABLED=
-ERROR_ALERT_THROTTLE_SEC=
-
-
-### Detailed Documentation
-
-See `.env` file for all available options.
+- [ ] Get BOT_TOKEN from @BotFather
+- [ ] Get ADMIN_ID by sending `/id` to your bot
+- [ ] Set DEFAULT_LOCALE (ru or en)
+- [ ] Set ALERT_CHAT_ID (create group and get ID)
+- [ ] Set TIMEZONE to your timezone
+- [ ] Enable BACKUP_ENABLED=true
+- [ ] Enable ERROR_ALERTS_ENABLED=true
+- [ ] Start bot: `docker compose up -d`
 
 ---
 
-## 📊 API Endpoints
+## 💡 RECOMMENDATIONS FOR BEGINNERS
 
-Bot works through Telegram Bot API. No public REST endpoints.
+**Minimal setup (just to run):**
+```bash
+BOT_TOKEN=your_token_here
+ADMIN_ID=your_id_here
+DEFAULT_LOCALE=ru
+```
 
----
+**Recommended setup (with monitoring):**
+```bash
+BOT_TOKEN=your_token_here
+ADMIN_ID=your_id_here
+DEFAULT_LOCALE=ru
+ALERT_CHAT_ID=your_group_id
+TIMEZONE=...
+AUTO_CLOSE_AFTER_HOURS=24
+BACKUP_ENABLED=true
+FEEDBACK_COOLDOWN_ENABLED=true
+ERROR_ALERTS_ENABLED=true
+```
 
-## 🤝 Contributing
-
-Suggestions, feedback, and bug reports are welcome!
-
-Write to me:
-- 🐛 About bugs
-- 💡 About ideas
-- ✨ About features
-
----
-
-## 📝 License
-
-MIT License – free for personal and commercial use.
-
----
-
-## 👨‍💻 Author
-
-**JuraZZik**
-
-- Telegram: [@JuraZZik](https://t.me/JuraZZik)
-- Bot: [@JuraZZik_SupportBot](https://t.me/JuraZZik_SupportBot)
-- GitHub: [github.com/JuraZZik](https://github.com/JuraZZik)
-
----
-
-## 📈 Versioning
-
-| Version | Date       | Description                                     |
-| ------- | ---------- | ----------------------------------------------  |
-| 2.5.8   | 2025-11-11 | 🆕 Latest version update                        |
-| 2.5.1   | 2025-11-08 | ⏰ Complete auto-close tickets implementation🆕 |
-| 2.5.0   | 2025-11-07 | 🔧 Fixed localization and feedback system       |
-| 2.4.1   | 2025-11-06 | ✨ Stable version with multi-language support   |
-| 2.3.9   | 2025-10-29 | 🎉 First release                                |
-
->>>>>>> 50f37a4 (Update README.md)
-
-## 📋 Changelog
-
-### [2.5.1] - 2025-11-08
-
-#### Added
-- ⏰ Automatic ticket closure when user doesn't respond after admin reply
-- 🔔 Localized notifications for auto-closed tickets (admin & user)
-- 📊 Last actor tracking (user/support) for better ticket lifecycle management
-- ⚙️ Configurable timeout via `AUTO_CLOSE_AFTER_HOURS` environment variable
-
-#### Changed
-- 🔄 Improved `last_actor` update logic when admin takes ticket
-- 📅 Scheduler now runs hourly checks for inactive tickets
-
-#### Fixed
-- ✅ Completed auto-close functionality with proper scheduler registration
-- 🎯 Only closes tickets where admin sent last message (not user-waiting tickets)
+**Production setup (full features):**
+```bash
+# All settings enabled with optimized values
+BOT_TOKEN=your_token_here
+ADMIN_ID=your_id_here
+DEFAULT_LOCALE=ru
+ALERT_CHAT_ID=your_group_id
+ALERT_TOPIC_ID=123
+START_ALERT=🤖 Bot started
+SHUTDOWN_ALERT=🛑 Bot stopped
+TIMEZONE=Europe/Moscow
+AUTO_CLOSE_AFTER_HOURS=24
+BACKUP_ENABLED=true
+BACKUP_FULL_PROJECT=false
+BACKUP_SEND_TO_TELEGRAM=true
+BACKUP_MAX_SIZE_MB=50
+FEEDBACK_COOLDOWN_ENABLED=true
+FEEDBACK_COOLDOWN_HOURS=24
+ASK_MIN_LENGTH=10
+ERROR_ALERTS_ENABLED=true
+ERROR_ALERT_THROTTLE_SEC=300
+```
 
 ---
 
-## ⭐ Support
+## ❓ COMMON QUESTIONS
 
-If you like the project – give it a star! ⭐
+**Q: What happens if I don't set ALERT_CHAT_ID?**
+A: Bot still works, but you won't get notifications. You won't know when it starts, stops, or has errors.
 
+**Q: Can I change these values without restarting bot?**
+A: No. You need to restart bot after changing .env file for changes to take effect.
 
-  ⭐
- ⭐⭐
-⭐⭐⭐
+**Q: What if AUTO_CLOSE_AFTER_HOURS is too short?**
+A: Users might get frustrated if tickets close before they see admin reply. Recommend at least 24 hours.
 
+**Q: Should I enable all backups?**
+A: Yes! Backups are cheap insurance. If data corrupts, you lose everything. Always backup.
+
+**Q: What timezone should I use?**
+A: Use your local timezone. This affects when auto-close checks run and log timestamps.
 
 ---
 
-**Thank you for using Support Bot!** 🎉
+## 🔗 USEFUL RESOURCES
+
+- Telegram timezone list: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+- Telegram Bot API docs: https://core.telegram.org/bots/api
+- Your bot's bot page: https://t.me/BotFather (send `/help`)

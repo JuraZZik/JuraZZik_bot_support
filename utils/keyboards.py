@@ -10,13 +10,13 @@ def _get_user_lang(user_id: int) -> str:
 
 
 def get_rating_keyboard(ticket_id: str, user_lang: str = None):
-    """Build rating keyboard for ticket quality evaluation"""
+    """Build rating keyboard for ticket quality evaluation (callback_data with numbers)"""
     user_lang = user_lang or DEFAULT_LOCALE
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(get_text("rating.excellent", lang=user_lang), callback_data=f"rate:{ticket_id}:excellent"),
-            InlineKeyboardButton(get_text("rating.good", lang=user_lang), callback_data=f"rate:{ticket_id}:good"),
-            InlineKeyboardButton(get_text("rating.ok", lang=user_lang), callback_data=f"rate:{ticket_id}:ok")
+            InlineKeyboardButton(get_text("rating.excellent", lang=user_lang), callback_data=f"rate:{ticket_id}:5"),
+            InlineKeyboardButton(get_text("rating.good", lang=user_lang), callback_data=f"rate:{ticket_id}:3"),
+            InlineKeyboardButton(get_text("rating.ok", lang=user_lang), callback_data=f"rate:{ticket_id}:1")
         ]
     ])
 

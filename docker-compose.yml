@@ -1,14 +1,52 @@
 services:
   support_bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
     container_name: bot_support
     restart: unless-stopped
+    
+    # ============================================
+    # RESOURCE LIMITS
+    # ============================================
+    deploy:
+      resources:
+        limits:
+          cpus: '1'           # Max 1 CPU
+          memory: 512M        # Max 512MB RAM
+        reservations:
+          cpus: '0.5'         # Reserve 0.5 CPU
+          memory: 256M        # Reserve 256MB RAM
+    
+    # ============================================
+    # DATA PERSISTENCE
+    # ============================================
     volumes:
-      - ./bot_data:/app/bot_data
+      - ${PWD}/bot_data:/app/bot_data   # Mount data directory
+    
+    # ============================================
+    # CONFIGURATION
+    # ============================================
     env_file:
       - .env
+    
+    # ============================================
+    # HEALTH CHECK
+    # ============================================
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/bot_data/bot.log"]
+      interval: 30s         # Check every 30 seconds
+      timeout: 10s          # Wait 10 seconds for response
+      retries: 3            # Restart after 3 failed checks
+      start_period: 10s     # Wait 10s before first check
+    
+    # ============================================
+    # LOGGING
+    # ============================================
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "10m"     # Max 10MB per log file
+        max-file: "5"       # Keep 5 log files max
+        labels: "com.example.service=bot_support"

@@ -20,7 +20,9 @@
     "reply": "💬 Reply",
     "take": "🚀 Take in Progress",
     "close": "🔒 Close",
-    "enter_reply": "Enter Reply"
+    "enter_reply": "Enter Reply",
+    "write_suggestion": "✏️ Write Suggestion",
+    "write_review": "✏️ Write Review"
   },
   "messages": {
     "return_to_menu": "Use the menu to select an action.",
@@ -34,10 +36,11 @@
     "message_sent": "✅ Message sent",
     "suggestion_sent": "✅ Your suggestion has been sent!",
     "review_sent": "✅ Your review has been sent!",
-    "thanks_suggestion": "Thank you for your suggestion! 💡",
-    "thanks_review": "Thank you for your review! ⭐",
+    "thanks_suggestion": "💡 Thank you for your suggestion! Your feedback helps us improve.",
+    "thanks_review": "⭐ Thank you for your review! Your rating is very important to us.",
     "thanks_rating": "Thank you for rating! 🙏",
     "thanks_rating_text": "✅ Thank you for rating: {rating}\n\nYour feedback is very important to us!",
+    "thanks_for_rating": "Thank you for rating! 🙏",
     "invite_review": "Would you like to leave a review about our service?",
     "rate_quality": "Rate the quality of service:",
     "banned": "❌ You are blocked",
@@ -47,6 +50,7 @@
     "ticket_not_found": "❌ Ticket not found",
     "ticket_taken": "✅ Ticket {ticket_id} taken",
     "ticket_closed": "✅ Ticket {ticket_id} closed",
+    "ticket_closed_rate": "✅ Your ticket {ticket_id} is closed.\n\nRate the quality of service:",
     "answer_sent": "✅ Answer sent",
     "enter_reply": "Enter your reply to the user:",
     "choose_language": "🌐 Choose language:",
@@ -56,7 +60,9 @@
     "review_cooldown": "⏳ You already sent a review.\n\nTry again in {hours}h.",
     "backup_disabled_full": "❌ Backup feature is disabled",
     "backup_creating": "⏳ Creating backup...",
-    "ticket_auto_closed_user": "⏰ Your ticket {ticket_id} was automatically closed because you didn't respond to our support reply for {hours} hours.\n\nIf you still need help, you can create a new ticket anytime! 💬"
+    "ticket_auto_closed_user": "⏰ Your ticket {ticket_id} was automatically closed because you didn't respond to our support reply for {hours} hours.\n\nIf you still need help, you can create a new ticket anytime! 💬",
+    "admin_thanked_feedback": "💙 Administrator thanked you for your feedback!",
+    "invalid_id_format": "❌ Invalid ID format. Enter numeric user ID."
   },
   "search": {
     "prompt": "🔍 Enter ticket number (for example: #123 or just 123)",
@@ -92,6 +98,8 @@
     "user_not_banned": "⚠️ User {user_id} is not banned",
     "user_unbanned_reason": "✅ User {user_id} unbanned\nBan reason was: {reason}",
     "no_bans": "📋 Ban list is empty",
+    "no_banned_users": "📋 Banned users list is empty",
+    "banned_users_list": "📋 Banned users list:",
     "tickets_cleared": "✅ Active tickets cleared",
     "ban_user": "🚫 Ban User",
     "unban_user": "✅ Unban User",
@@ -121,7 +129,17 @@
     "thank_suggestion": "👍 Thank for suggestion",
     "thank_review": "👍 Thank for review",
     "thanked": "✓ Thanked",
-    "reply_instruction": "ℹ️ Use the 'Take in Progress' and 'Reply' buttons in the ticket"
+    "reply_instruction": "ℹ️ Use the 'Take in Progress' and 'Reply' buttons in the ticket",
+    "enter_reply": "Enter your reply to the user:",
+    "user_rated_ticket": "⭐ User {user_id} rated ticket {ticket_id}: {rating}/5",
+    "thank_sent": "✅ Thank you sent",
+    "ticket_closed": "✅ Ticket closed",
+    "user_rated_ticket": "⭐ User @{username} (ID: {user_id}) rated ticket {ticket_id}: {rating}/5"
+  },
+  "errors": {
+    "ticket_not_found": "❌ Ticket not found",
+    "feedback_not_found": "❌ Feedback not found",
+    "failed_to_send": "❌ Failed to send message"
   },
   "notifications": {
     "new_ticket": "🆕 NEW TICKET",

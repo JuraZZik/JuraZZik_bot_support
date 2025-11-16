@@ -1,10 +1,115 @@
-__pycache__/
-*.pyc
-.env
-bot_data/
-data/
-*.log
+# ═══════════════════════════════════════════════════════════════
+# SYSTEM FILES
+# ═══════════════════════════════════════════════════════════════
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.Thumbs.db
+
+# ═══════════════════════════════════════════════════════════════
+# IDE & EDITOR
+# ═══════════════════════════════════════════════════════════════
 .vscode/
 .idea/
-venv/
+*.iml
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# ═══════════════════════════════════════════════════════════════
+# PYTHON
+# ═══════════════════════════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ═══════════════════════════════════════════════════════════════
+# PROJECT SPECIFIC
+# ═══════════════════════════════════════════════════════════════
+.env
+.env.local
+.env.*.local
+.env.*.production.local
+bot_data/
+logs/
+*.log
+backups/
+temp/
+tmp/
+*.bak
+*.backup
+
+# ═══════════════════════════════════════════════════════════════
+# DOCKER
+# ═══════════════════════════════════════════════════════════════
+.dockerignore
+docker-compose.override.yml
+
+# ═══════════════════════════════════════════════════════════════
+# GIT
+# ═══════════════════════════════════════════════════════════════
+.git/
+.gitkeep
+*.patch
+
+# ═══════════════════════════════════════════════════════════════
+# DISTRIBUTION / PACKAGING
+# ═══════════════════════════════════════════════════════════════
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.webassets-cache
+instance/
+.coverage.* 
+.coverage
+.python-version
+
+# ═══════════════════════════════════════════════════════════════
+# MISC
+# ═══════════════════════════════════════════════════════════════
+*.db
+*.sqlite
+*.sqlite3
+*.pid
+*.lock
+*.swp
+*.swo
+*~
+.~*

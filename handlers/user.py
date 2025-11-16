@@ -298,7 +298,7 @@ async def handle_suggestion_text(update: Update, context: ContextTypes.DEFAULT_T
         # Get admin language for admin message
         admin_lang = get_admin_language()
 
-        # Create keyboard with thank button
+        # Create keyboard with thank button - ACTIVE STATE
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(get_text("admin.thank_suggestion", lang=admin_lang), callback_data=f"thank:{feedback_id}")]
         ])
@@ -356,7 +356,7 @@ async def handle_review_text(update: Update, context: ContextTypes.DEFAULT_TYPE,
         # Get admin language for admin message
         admin_lang = get_admin_language()
 
-        # Create keyboard with thank button
+        # Create keyboard with thank button - ACTIVE STATE
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(get_text("admin.thank_review", lang=admin_lang), callback_data=f"thank:{feedback_id}")]
         ])

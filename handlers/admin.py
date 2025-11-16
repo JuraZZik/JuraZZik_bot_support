@@ -27,7 +27,7 @@ async def inbox_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_inbox(update, context)
 
 
-async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE, status_filter: str = None, page: int = None):
     """Display ticket list with pagination and filtering"""
     user = update.effective_user
     # Get admin language instead of user language
@@ -35,8 +35,18 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info(f"🔍 DEBUG: PAGE_SIZE = {PAGE_SIZE}")
 
-    filter_status = context.user_data.get("inbox_filter", "all")
-    page = context.user_data.get("inbox_page", 0)
+    # Используем переданные параметры или берем из context.user_data
+    if status_filter is not None:
+        filter_status = status_filter
+        context.user_data["inbox_filter"] = status_filter
+    else:
+        filter_status = context.user_data.get("inbox_filter", "all")
+    
+    if page is not None:
+        current_page = page
+        context.user_data["inbox_page"] = page
+    else:
+        current_page = context.user_data.get("inbox_page", 0)
 
     # Fetch tickets based on filter status
     if filter_status == "all":
@@ -50,11 +60,11 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Calculate pagination
     total_tickets = len(tickets)
     total_pages = max(1, (total_tickets + PAGE_SIZE - 1) // PAGE_SIZE)
-    start_idx = page * PAGE_SIZE
+    start_idx = current_page * PAGE_SIZE
     end_idx = min(start_idx + PAGE_SIZE, total_tickets)
     page_tickets = tickets[start_idx:end_idx]
 
-    logger.info(f"🔍 DEBUG: total_tickets={total_tickets}, page={page}, start_idx={start_idx}, end_idx={end_idx}, showing={len(page_tickets)}")
+    logger.info(f"🔍 DEBUG: total_tickets={total_tickets}, page={current_page}, start_idx={start_idx}, end_idx={end_idx}, showing={len(page_tickets)}")
 
     # Translate filter status names
     filter_names = {
@@ -69,7 +79,7 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not page_tickets:
         text = f"**{get_text('inbox.title', lang=user_lang)}** ({filter_display})\n\n{get_text('inbox.no_tickets', lang=user_lang)}"
     else:
-        header = f"**{get_text('inbox.title', lang=user_lang)}** ({filter_display}) | {get_text('inbox.page', lang=user_lang, page=page+1, total=total_pages)}\n\n"
+        header = f"**{get_text('inbox.title', lang=user_lang)}** ({filter_display}) | {get_text('inbox.page', lang=user_lang, page=current_page+1, total=total_pages)}\n\n"
         previews = [format_ticket_preview(t) for t in page_tickets]
         text = header + "\n".join(previews)
 
@@ -87,10 +97,10 @@ async def show_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Build pagination buttons
     nav_row = []
-    if page > 0:
-        nav_row.append(InlineKeyboardButton(get_text('buttons.back', lang=user_lang), callback_data=f"inbox_page:{page-1}"))
-    if page < total_pages - 1:
-        nav_row.append(InlineKeyboardButton(get_text('buttons.forward', lang=user_lang), callback_data=f"inbox_page:{page+1}"))
+    if current_page > 0:
+        nav_row.append(InlineKeyboardButton(get_text('buttons.back', lang=user_lang), callback_data=f"inbox_page:{current_page-1}"))
+    if current_page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton(get_text('buttons.forward', lang=user_lang), callback_data=f"inbox_page:{current_page+1}"))
 
     # Search button (with localization)
     search_row = [InlineKeyboardButton(get_text("search.button", lang=user_lang), callback_data="search_ticket_start")]

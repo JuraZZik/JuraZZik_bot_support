@@ -142,8 +142,7 @@ def get_text(key: str, lang: Optional[str] = None, locale: Optional[str] = None,
         lang: Language code (backward compatibility alias for locale)
         locale: Explicit locale code to override all defaults
         **kwargs: Format parameters for string formatting
-            - user_id: Meta parameter - NOT used for formatting
-            - Other parameters: Used for .format() on the translated string
+            - All parameters are used for .format() on the translated string
 
     Returns:
         Translated text with applied formatting, or empty string if translation not found
@@ -151,7 +150,7 @@ def get_text(key: str, lang: Optional[str] = None, locale: Optional[str] = None,
     Example:
         get_text("messages.welcome", user_id=123)
         get_text("messages.ticket_closed", ticket_id="ABC123")
-        get_text("admin.new_ticket", locale="ru", user_id=456, hours=24)
+        get_text("admin.user_rated_ticket", locale="ru", user_id=456, ticket_id="T-001", rating=5)
     """
     current_locale = None
     try:
@@ -172,7 +171,7 @@ def get_text(key: str, lang: Optional[str] = None, locale: Optional[str] = None,
 
         if not current_locale:
             logger.error(f"❌ No locale set (key: {key})")
-            return ""  #
+            return ""
 
         # Navigate through nested dictionary using dot notation
         # e.g., "messages.welcome" -> _locales_data[locale]["messages"]["welcome"]
@@ -182,20 +181,11 @@ def get_text(key: str, lang: Optional[str] = None, locale: Optional[str] = None,
         for k in keys:
             value = value[k]
 
-        # Format string with provided parameters (EXCLUDING meta parameters like user_id)
+        # Format string with provided parameters
         if kwargs:
             try:
-                # Meta parameters that should NOT be used for formatting
-                meta_params = {'user_id'}
-
-                # Extract only format parameters
-                format_kwargs = {k: v for k, v in kwargs.items() if k not in meta_params}
-
-                # Apply formatting if there are actual format parameters
-                if format_kwargs:
-                    return value.format(**format_kwargs)
-
-                return value
+                # Use ALL parameters for formatting (user_id can be used in format strings)
+                return value.format(**kwargs)
             except KeyError as format_error:
                 logger.warning(f"⚠️ Format parameter missing in key '{key}': {format_error}")
                 # Return unformatted value instead of empty string
@@ -210,7 +200,7 @@ def get_text(key: str, lang: Optional[str] = None, locale: Optional[str] = None,
     except (KeyError, AttributeError, TypeError) as e:
         error_locale = current_locale if current_locale else "unknown"
         logger.error(f"❌ Translation key not found: {key} (locale: {error_locale}, error: {e})")
-        return ""  #
+        return ""
 
 
 # Alias for gettext-style usage (more concise)

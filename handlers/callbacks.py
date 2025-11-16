@@ -40,21 +40,21 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_ticket_card(update, context, ticket_id)
         return
 
-    # After rating, user can submit suggestion
+    # User can submit suggestion after rating
     if data == "after_rate_suggestion":
         context.user_data["state"] = "awaiting_suggestion"
         context.user_data["skip_cooldown"] = True
         await query.message.reply_text(get_text("messages.write_suggestion", lang=user_lang))
         return
 
-    # After rating, user can submit review
+    # User can submit review after rating
     elif data == "after_rate_review":
         context.user_data["state"] = "awaiting_review"
         context.user_data["skip_cooldown"] = True
         await query.message.reply_text(get_text("messages.write_review", lang=user_lang))
         return
 
-    # Cancel feedback prompt
+    # Delete feedback prompt message
     elif data == "cancel_feedback_prompt":
         try:
             await query.delete_message()
@@ -62,13 +62,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Failed to delete feedback prompt: {e}")
         return
 
-    # Start asking question
+    # Start question creation flow
     elif data == "user_start_question":
         await query.message.reply_text(get_text("messages.describe_question", lang=user_lang, n=20))
         context.user_data["state"] = "awaiting_question"
         return
 
-    # Submit suggestion
+    # Start suggestion submission
     elif data == "user_suggestion":
         can_send, error_msg = feedback_service.check_cooldown(user.id, "suggestion", user_lang)
         if not can_send:
@@ -80,7 +80,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(get_text("messages.write_suggestion", lang=user_lang))
         return
 
-    # Submit review
+    # Start review submission
     elif data == "user_review":
         can_send, error_msg = feedback_service.check_cooldown(user.id, "review", user_lang)
         if not can_send:
@@ -92,7 +92,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(get_text("messages.write_review", lang=user_lang))
         return
 
-    # Change language
+    # Show language selection menu
     elif data == "user_change_language":
         keyboard = get_user_language_keyboard(user_lang)
 
@@ -102,7 +102,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Set user language
+    # Set user language and return to menu
     elif data.startswith("user_lang:"):
         locale = data.split(":")[1]
 
@@ -120,7 +120,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Start search
+    # Start ticket search
     elif data == "search_ticket_start":
         if update.callback_query and update.callback_query.message:
             current_msg_id = update.callback_query.message.message_id
@@ -160,39 +160,39 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"🔍 New search menu created: {msg.message_id}")
         return
 
-    # Admin inbox
+    # Show admin inbox
     elif data == "admin_inbox":
         await handle_admin_inbox(update, context)
         return
 
-    # Admin stats
+    # Show admin statistics
     elif data == "admin_stats":
         await handle_admin_stats(update, context)
         return
 
-    # Admin settings
+    # Show admin settings
     elif data == "admin_settings":
         await handle_admin_settings(update, context)
         return
 
-    # Ban user
+    # Start ban user flow
     elif data == "ban_user":
         context.user_data["state"] = "awaiting_ban_user_id"
         await show_admin_screen(update, context, get_text("admin.enter_user_id", lang=user_lang), None, screen_type="settings")
         return
 
-    # Unban user
+    # Start unban user flow
     elif data == "unban_user":
         context.user_data["state"] = "awaiting_unban_user_id"
         await show_admin_screen(update, context, get_text("admin.enter_unban_id", lang=user_lang), None, screen_type="settings")
         return
 
-    # View bans list
+    # Show banned users list
     elif data == "bans_list":
         await handle_bans_list(update, context)
         return
 
-    # Clear active tickets
+    # Clear all active tickets
     elif data == "clear_tickets":
         count = ticket_service.clear_active_tickets()
         keyboard = InlineKeyboardMarkup([
@@ -206,7 +206,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Create backup
+    # Create manual backup
     elif data == "create_backup":
         from services.backup import backup_service
 
@@ -237,7 +237,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             logger.info(f"Manual backup created: {backup_filename} ({size_formatted})")
 
-            # BACKUP INFORMATION
+            # Build backup information message
             if backup_info.get("type") == "full":
                 message_text = (
                     f"{get_text('admin.backup_created_sent', lang=admin_lang).format(filename=backup_filename, size=size_formatted)}\n\n"
@@ -292,7 +292,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
 
-    # Change language
+    # Show language selection menu for admin
     elif data == "change_language":
         await show_admin_screen(
             update, context,
@@ -302,7 +302,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Settings menu
+    # Show admin settings menu
     elif data == "settings":
         await show_admin_screen(
             update, context,
@@ -326,7 +326,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Rate ticket (with RATING_ENABLED check)
+    # Handle ticket rating
     elif data.startswith("rate:"):
         if RATING_ENABLED:
             await handle_rating(update, context, data)
@@ -334,37 +334,37 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.callback_query.answer("Rating feature is disabled", show_alert=True)
         return
 
-    # Thank feedback
+    # Handle thank you for feedback
     elif data.startswith("thank:"):
         await handle_thank_feedback(update, context, data)
         return
 
-    # Take ticket
+    # Handle admin taking ticket
     elif data.startswith("take:"):
         await handle_take_ticket(update, context, data)
         return
 
-    # Close ticket
+    # Handle ticket closing
     elif data.startswith("close:"):
         await handle_close_ticket(update, context, data)
         return
 
-    # Reply to ticket
+    # Handle admin reply to ticket
     elif data.startswith("reply:"):
         await handle_reply_ticket(update, context, data)
         return
 
-    # Filter inbox by status
+    # Handle inbox filtering
     elif data.startswith("inbox_filter:"):
         await handle_inbox_filter(update, context, data)
         return
 
-    # Paginate inbox
+    # Handle inbox pagination
     elif data.startswith("inbox_page:"):
         await handle_inbox_page(update, context, data)
         return
 
-    # Admin home
+    # Return to admin home menu
     elif data == "admin_home":
         admin_lang = get_admin_language()
 
@@ -396,7 +396,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # User home
+    # Return to user home menu
     elif data == "user_home":
         from handlers.start import get_user_inline_menu
         await query.message.reply_text(
@@ -405,7 +405,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # No operation
+    # No operation - used for disabled buttons
     elif data == "noop":
         return
 
@@ -448,3 +448,244 @@ async def handle_admin_settings(update: Update, context: ContextTypes.DEFAULT_TY
         get_settings_keyboard(admin_lang),
         screen_type="settings"
     )
+
+
+async def handle_bans_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Display list of banned users"""
+    admin_lang = get_admin_language()
+    banned_users = ban_manager.get_banned_list()
+
+    if not banned_users:
+        text = get_text("admin.no_banned_users", lang=admin_lang)
+    else:
+        text = get_text("admin.banned_users_list", lang=admin_lang) + "\n\n"
+        for user_id, reason in banned_users:
+            text += f"🚫 ID: <code>{user_id}</code>\n"
+            if reason:
+                text += f"   Reason: {reason}\n"
+            text += "\n"
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(get_text('buttons.back', lang=admin_lang), callback_data="settings")]
+    ])
+
+    await show_admin_screen(update, context, text, keyboard, screen_type="settings")
+
+
+async def handle_rating(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle ticket rating from user with clickable ticket ID and username/id in alert"""
+    parts = data.split(":")
+    ticket_id = parts[1]
+    rating = int(parts[2])
+
+    user = update.effective_user
+    user_lang = get_user_language(user.id)
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(get_text("errors.ticket_not_found", lang=user_lang), show_alert=True)
+        return
+
+    # Save rating to ticket
+    ticket_service.rate_ticket(ticket_id, rating)
+    logger.info(f"⭐ User {user.id} rated ticket {ticket_id}: {rating}/5")
+
+    # Show thank you message with options for review/suggestion and cancel button
+    await update.callback_query.edit_message_text(
+        get_text("messages.thanks_for_rating", lang=user_lang),
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(get_text("buttons.write_suggestion", lang=user_lang), callback_data="after_rate_suggestion")],
+            [InlineKeyboardButton(get_text("buttons.write_review", lang=user_lang), callback_data="after_rate_review")],
+            [InlineKeyboardButton(get_text("buttons.cancel", lang=user_lang), callback_data="cancel_feedback_prompt")]
+        ])
+    )
+
+    # Prepare admin alert text with username and user_id
+    username = f"@{user.username}" if user.username else "unknown"
+    admin_lang = get_admin_language()
+    alert_text = get_text(
+        "admin.user_rated_ticket",
+        lang=admin_lang,
+        user_id=user.id,
+        ticket_id=ticket_id,
+        rating=rating,
+        username=username
+    )
+
+    # Add button with clickable ticket ID
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"📋 {ticket_id}", callback_data=f"ticket:{ticket_id}")]
+    ])
+
+    try:
+        # Send alert to admin with full details including username and clickable ticket ID
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=alert_text,
+            reply_markup=keyboard
+        )
+        logger.info(f"✅ Rating alert sent to admin {ADMIN_ID}: {ticket_id} rated {rating}/5 by user {user.id}")
+    except Exception as e:
+        logger.error(f"Failed to send rating alert to admin: {e}")
+
+
+async def handle_thank_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle thanking user for feedback - with button state change and type-specific message"""
+    feedback_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    feedback = feedback_service.get_feedback(feedback_id)
+    if not feedback:
+        await update.callback_query.answer(get_text("errors.feedback_not_found", lang=admin_lang), show_alert=True)
+        return
+
+    user_id = feedback.get("user_id")
+    feedback_type = feedback.get("type")
+    user_lang = get_user_language(user_id)
+    message_id = feedback.get("message_id")
+
+    # Mark feedback as thanked in service
+    feedback_service.thank_feedback(feedback_id)
+
+    try:
+        # Send different thank you message based on feedback type
+        if feedback_type == "suggestion":
+            thank_message = get_text("messages.thanks_suggestion", lang=user_lang)
+        elif feedback_type == "review":
+            thank_message = get_text("messages.thanks_review", lang=user_lang)
+        else:
+            thank_message = get_text("messages.admin_thanked_feedback", lang=user_lang)
+
+        # Send thank you message to user
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=thank_message
+        )
+        logger.info(f"👍 Thank you message sent to user {user_id} for {feedback_type}")
+
+        # Edit admin's message - replace active button with inactive
+        if message_id:
+            try:
+                # Create disabled button with checkmark
+                inactive_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(get_text("admin.thanked", lang=admin_lang), callback_data="noop")]
+                ])
+
+                # Edit message keyboard only (keep text)
+                await context.bot.edit_message_reply_markup(
+                    chat_id=ADMIN_ID,
+                    message_id=message_id,
+                    reply_markup=inactive_keyboard
+                )
+                logger.info(f"✅ Feedback button updated to disabled: {feedback_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to update button: {e}")
+
+        await update.callback_query.answer(get_text("admin.thank_sent", lang=admin_lang), show_alert=False)
+        logger.info(f"👍 Admin thanked user {user_id} for {feedback_type} {feedback_id}")
+    except Exception as e:
+        logger.error(f"Failed to send thank message: {e}")
+        await update.callback_query.answer(get_text("errors.failed_to_send", lang=admin_lang), show_alert=True)
+
+
+async def handle_take_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle admin taking a ticket"""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(get_text("errors.ticket_not_found", lang=admin_lang), show_alert=True)
+        return
+
+    # Get admin ID from update
+    admin_id = update.effective_user.id
+
+    # Pass admin_id to take_ticket method
+    ticket_service.take_ticket(ticket_id, admin_id)
+    logger.info(f"✅ Admin {admin_id} took ticket {ticket_id}")
+
+    from handlers.admin import show_ticket_card
+    await show_ticket_card(update, context, ticket_id)
+
+
+async def handle_close_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle closing a ticket"""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(get_text("errors.ticket_not_found", lang=admin_lang), show_alert=True)
+        return
+
+    ticket_service.close_ticket(ticket_id)
+    logger.info(f"🔒 Ticket {ticket_id} closed by admin")
+
+    user_id = ticket.user_id
+    user_lang = get_user_language(user_id)
+
+    try:
+        if RATING_ENABLED:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=get_text("messages.ticket_closed_rate", lang=user_lang).format(ticket_id=ticket_id),
+                reply_markup=get_rating_keyboard(ticket_id, user_lang)
+            )
+        else:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=get_text("messages.ticket_closed", lang=user_lang).format(ticket_id=ticket_id)
+            )
+    except Exception as e:
+        logger.error(f"Failed to notify user about ticket closure: {e}")
+
+    await update.callback_query.answer(get_text("admin.ticket_closed", lang=admin_lang), show_alert=False)
+
+    from handlers.admin import show_ticket_card
+    await show_ticket_card(update, context, ticket_id)
+
+
+async def handle_reply_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle admin reply to ticket"""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(get_text("errors.ticket_not_found", lang=admin_lang), show_alert=True)
+        return
+
+    context.user_data["reply_ticket_id"] = ticket_id
+    context.user_data["state"] = "awaiting_reply"
+
+    await update.callback_query.answer()
+    await update.callback_query.message.reply_text(get_text("admin.enter_reply", lang=admin_lang))
+
+
+async def handle_inbox_filter(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle inbox filtering by ticket status"""
+    filter_status = data.split(":")[1]
+
+    # Save selected filter and reset to first page
+    context.user_data["inbox_filter"] = filter_status
+    context.user_data["inbox_page"] = 0
+
+    # Show updated ticket list
+    from handlers.admin import show_inbox
+    await show_inbox(update, context, status_filter=filter_status)
+
+
+async def handle_inbox_page(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str):
+    """Handle inbox pagination"""
+    page = int(data.split(":")[1])
+
+    # Save current page
+    context.user_data["inbox_page"] = page
+
+    # Get current filter
+    current_filter = context.user_data.get("inbox_filter", "all")
+
+    # Show updated tickets page
+    from handlers.admin import show_inbox
+    await show_inbox(update, context, status_filter=current_filter, page=page)
