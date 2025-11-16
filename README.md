@@ -121,9 +121,6 @@ python main.py
 
 ## 📊 Version History
 
-## 📈 Versioning
-
-## 📈 Versioning
 
 |Version|Date|Description|
 |--|--|--|
