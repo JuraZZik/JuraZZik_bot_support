@@ -7,7 +7,6 @@
 ![License](https://img.shields.io/badge/license-MIT-orange)
 [![Donate](https://img.shields.io/badge/Donate-Telegram%20Tribute-brightgreen)](https://t.me/tribute/app?startapp=dAi3)
 ---
-```text
 
 # Support Bot Project Overview
 
@@ -59,6 +58,8 @@ This is a **Telegram bot for managing support tickets** with a complete ticket p
 | **Scheduler** | Asynchronous job scheduler |
 
 ## 📁 Project Structure
+
+```text
 
 bot_support/
 ├── main.py                # Entry point: Telegram bot application
