@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
+
 from config import (
     TIMEZONE,
     FEEDBACK_COOLDOWN_ENABLED,
@@ -8,146 +9,151 @@ from config import (
     DEFAULT_LOCALE,
 )
 from locales import get_text
+from storage.data_manager import data_manager
 
 logger = logging.getLogger(__name__)
 
 
 class FeedbackService:
-    """Service for managing user feedback (suggestions and reviews)"""
+    """Service for managing user feedback (suggestions and reviews) with persistence."""
 
-    def __init__(self):
-        # Storage: (user_id, type) -> datetime for cooldown tracking
-        self.last_feedback = {}
-        # Storage: feedback_id -> feedback_data
-        self.feedbacks = {}
-
-    def check_cooldown(self, user_id: int, feedback_type: str, user_lang: str = None):
-        """Check cooldown for feedback submission with proper localization
+    def check_cooldown(
+        self,
+        user_id: int,
+        feedback_type: str,
+        user_lang: str | None = None,
+    ):
+        """
+        Check cooldown for feedback submission with proper localization.
 
         Args:
             user_id: User ID
-            feedback_type: Type of feedback (suggestion or review)
+            feedback_type: "suggestion" or "review"
             user_lang: User language for localized error message
 
         Returns:
-            Tuple (can_send: bool, error_message: str or None)
+            Tuple (can_send: bool, error_message: str | None)
         """
         user_lang = user_lang or DEFAULT_LOCALE
 
-        # Return True if cooldown is disabled
         if not FEEDBACK_COOLDOWN_ENABLED:
             return True, None
 
-        # Get last feedback timestamp for this user and type
-        last_time = self.last_feedback.get((user_id, feedback_type))
+        last_time = data_manager.get_feedback_cooldown(user_id, feedback_type)
         if not last_time:
             return True, None
 
-        # Calculate elapsed time in seconds
         elapsed = (datetime.now(TIMEZONE) - last_time).total_seconds()
         need = FEEDBACK_COOLDOWN_HOURS * 3600
 
-        # Check if cooldown period has passed
         if elapsed >= need:
             return True, None
 
-        # Calculate remaining hours
         remaining = int((need - elapsed + 3599) // 3600)
-
-        # Build localization key
         key = f"messages.{feedback_type}_cooldown"
-
-        # Get localized error message
-        message = get_text(
-            key,
-            lang=user_lang,
-            hours=remaining
-        )
-
+        message = get_text(key, lang=user_lang, hours=remaining)
         return False, message
 
-    def update_last_feedback(self, user_id: int, feedback_type: str):
-        """Update last feedback timestamp for user to track cooldown
+    def update_last_feedback(self, user_id: int, feedback_type: str) -> None:
+        """
+        Update last feedback timestamp for user to track cooldown.
 
         Args:
             user_id: User ID
-            feedback_type: Type of feedback (suggestion or review)
+            feedback_type: "suggestion" or "review"
         """
-        self.last_feedback[(user_id, feedback_type)] = datetime.now(TIMEZONE)
-        logger.info(f"Updated {feedback_type} timestamp for user {user_id}")
+        now = datetime.now(TIMEZONE)
+        data_manager.set_feedback_cooldown(user_id, feedback_type, now)
+        logger.info(
+            "Updated %s cooldown timestamp for user %s at %s",
+            feedback_type,
+            user_id,
+            now.isoformat(),
+        )
 
     def create_feedback(self, user_id: int, feedback_type: str, text: str) -> str:
-        """Create new feedback record
+        """
+        Create new feedback record and persist it.
 
         Args:
             user_id: User ID
-            feedback_type: Type (suggestion or review)
+            feedback_type: "suggestion" or "review"
             text: Feedback text
 
         Returns:
             Feedback ID (format: type_randomhex)
         """
-        # Generate unique feedback ID with format: sug_12345abc or rev_87654def
         feedback_id = f"{feedback_type[:3]}_{uuid.uuid4().hex[:8]}"
+        created_at = datetime.now(TIMEZONE)
 
-        # Store feedback data
-        self.feedbacks[feedback_id] = {
+        feedback_data = {
             "user_id": user_id,
             "type": feedback_type,
             "text": text,
-            "thanked": False,  # Admin hasn't sent thank you yet
-            "message_id": None,  # Telegram message ID for editing
-            "created_at": datetime.now(TIMEZONE)
+            "thanked": False,
+            "message_id": None,
+            "created_at": created_at.isoformat(),
         }
 
-        logger.info(f"Created feedback {feedback_id} from user {user_id}")
+        data_manager.save_feedback(feedback_id, feedback_data)
+
+        logger.info("Created feedback %s from user %s", feedback_id, user_id)
         return feedback_id
 
-    def get_feedback(self, feedback_id: str) -> dict:
-        """Get feedback by ID
-
-        Args:
-            feedback_id: Feedback ID
+    def get_feedback(self, feedback_id: str) -> dict | None:
+        """
+        Get feedback by ID.
 
         Returns:
-            Feedback data dict or None if not found
+            Feedback data dict or None if not found.
         """
-        feedback = self.feedbacks.get(feedback_id)
+        feedback = data_manager.get_feedback(feedback_id)
         if feedback:
-            logger.debug(f"Retrieved feedback {feedback_id}")
+            logger.debug("Retrieved feedback %s", feedback_id)
         else:
-            logger.warning(f"Feedback {feedback_id} not found")
+            logger.warning("Feedback %s not found", feedback_id)
         return feedback
 
-    def thank_feedback(self, feedback_id: str) -> dict:
-        """Mark feedback as thanked by admin and return feedback data
+    def thank_feedback(self, feedback_id: str) -> dict | None:
+        """
+        Mark feedback as thanked by admin and return feedback data.
 
         Args:
             feedback_id: Feedback ID
 
         Returns:
-            Feedback data dict or None if not found
+            Feedback data dict or None if not found.
         """
-        # Get feedback from storage
-        feedback = self.feedbacks.get(feedback_id)
+        feedback = data_manager.get_feedback(feedback_id)
         if feedback:
-            # Mark as thanked by admin
+            data_manager.update_feedback(feedback_id, {"thanked": True})
             feedback["thanked"] = True
-            logger.info(f"Feedback {feedback_id} marked as thanked")
+            logger.info("Feedback %s marked as thanked", feedback_id)
         return feedback
 
-    def set_message_id(self, feedback_id: str, message_id: int):
-        """Save Telegram message ID for feedback card (used for editing)
+    def set_message_id(self, feedback_id: str, message_id: int) -> None:
+        """
+        Save Telegram message ID for feedback card (used for editing).
 
         Args:
             feedback_id: Feedback ID
             message_id: Telegram message ID
         """
-        # Store message ID for later editing
-        if feedback_id in self.feedbacks:
-            self.feedbacks[feedback_id]["message_id"] = message_id
-            logger.debug(f"Set message_id for feedback {feedback_id}: {message_id}")
+        feedback = data_manager.get_feedback(feedback_id)
+        if not feedback:
+            logger.warning(
+                "Attempted to set message_id for non-existing feedback %s",
+                feedback_id,
+            )
+            return
+
+        data_manager.update_feedback(feedback_id, {"message_id": message_id})
+        logger.debug(
+            "Set message_id for feedback %s: %s",
+            feedback_id,
+            message_id,
+        )
 
 
-# Global instance - instantiate after class definition to avoid circular imports
+# Global instance
 feedback_service = FeedbackService()

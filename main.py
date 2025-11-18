@@ -30,7 +30,8 @@ from handlers.admin import (
 )
 from handlers.commands import (
     admin_command,
-    backup_command
+    backup_command,
+    test_error_command,  # NEW: import test_error_command
 )
 from handlers.callbacks import callback_handler
 from handlers.errors import error_handler
@@ -55,6 +56,9 @@ def main():
     application.add_handler(CommandHandler("admin", admin_command))
     application.add_handler(CommandHandler("backup", backup_command))
 
+    # NEW: test command to trigger an intentional error (for error-handler verification)
+    application.add_handler(CommandHandler("test_error", test_error_command))
+
     # Add callback handler
     application.add_handler(CallbackQueryHandler(callback_handler))
 
@@ -74,7 +78,7 @@ def main():
     logger.info(f"Admin ID: {ADMIN_ID}")
     logger.info("Starting bot with run_polling()...")
 
-    # Run bot - post_init and post_shutdown will be called automatically!
+    # Run bot - post_init and post_shutdown will be called automatically
     application.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True
