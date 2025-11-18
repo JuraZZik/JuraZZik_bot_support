@@ -432,7 +432,3 @@ ERROR_ALERT_THROTTLE_SEC=300
 
 ---
 
-
-## 💚 Support / Донат
-
-If this bot is useful to you, you can support development via Telegram (Tribute):
