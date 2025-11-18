@@ -1,5 +1,5 @@
 # 🎟️ Support Bot
-
+`
 > Full-featured Telegram bot for ticket management, feedback collection, and customer support automation
 
 ![Version](https://img.shields.io/badge/version-2.7.0-blue)
@@ -7,6 +7,7 @@
 ![License](https://img.shields.io/badge/license-MIT-orange)
 [![Donate](https://img.shields.io/badge/Donate-Telegram%20Tribute-brightgreen)](https://t.me/tribute/app?startapp=dAi3)
 ---
+```text
 
 # Support Bot Project Overview
 
@@ -59,28 +60,48 @@ This is a **Telegram bot for managing support tickets** with a complete ticket p
 
 ## 📁 Project Structure
 
-```text
 bot_support/
-├── main.py               # Entry point
-├── config.py             # Configuration
-├── requirements.txt      # Dependencies
-├── docker-compose.yml    # Docker config
-├── .env.example          # Example .env file
-├── handlers/             # Command handlers
-├── services/             # Services
-│   ├── tickets.py        # Ticket management
-│   ├── ticket_auto_close.py # Auto-close logic
-│   ├── feedback.py       # Feedback system
-│   ├── scheduler.py      # Job scheduler
-│   └── alerts.py         # Notifications
-├── storage/              # Data management
-├── locales/              # Localization (ru, en)
-├── utils/                # Helper functions
-└── bot_data/             # Data (created automatically)
-    ├── data.json         # Main data
-    ├── banned.json       # Blocked users list
-    ├── bot.log           # Logs
-    └── backups/          # Backups
+├── main.py                # Entry point: Telegram bot application
+├── config.py              # Configuration: token, ADMIN_ID, paths, intervals, versions
+├── requirements.txt       # Python dependencies
+├── docker-compose.yml     # Docker orchestration (bot + volume for bot_data)
+├── .env.example           # Example .env file with main environment variables
+├── handlers/              # Telegram update handlers
+│   ├── start.py           # /start, user and admin menu
+│   ├── user.py            # User messages, ticket creation
+│   ├── admin.py           # Inbox, ticket cards, admin text, bans
+│   ├── callbacks.py       # Inline buttons: rating, search, settings, help
+│   ├── commands.py        # Other commands (if any)
+│   └── errors.py          # Error catching and logging
+├── services/              # Services / business logic
+│   ├── tickets.py         # Ticket management (CRUD, statuses, rating)
+│   ├── ticket_auto_close.py  # Auto-close ticket logic based on inactivity timer
+│   ├── feedback.py        # Collecting reviews and suggestions, cooldowns
+│   ├── scheduler.py       # Job scheduler (auto-close, backup, cleanup)
+│   ├── alerts.py          # Notifications to admin/tech chat (startup, errors, backups)
+│   ├── backup.py          # Creating and sending backups
+│   └── bans.py            # Working with banned users
+├── storage/               # Data layer
+│   ├── data_manager.py    # Loading/saving data.json, statistics
+│   ├── models.py          # Models for tickets/users/feedback
+│   └── instruction_store.py # Storage for instruction/help texts (if used)
+├── locales/               # UI localization
+│   ├── ru.json            # Russian texts
+│   └── en.json            # English texts
+├── utils/                 # Helper modules
+│   ├── keyboards.py       # Inline keyboards (menus, settings, rating, help)
+│   ├── admin_help.py      # “❓ Admin help” text
+│   ├── admin_screen.py    # Unified admin screen rendering (edit/send + logging)
+│   ├── formatters.py      # Pretty formatting for ticket cards and statistics
+│   ├── locale_helper.py   # Getting/setting user/admin language
+│   ├── states.py          # State constants (FSM for admin and user)
+│   └── validators.py      # Input validation (IDs, lengths, etc.)
+└── bot_data/              # Runtime data (created automatically)
+    ├── data.json          # Main storage: users, tickets, feedback
+    ├── banned.json        # Banned users list
+    ├── bot.log            # Current bot log (with rotation)
+    └── backups/           # Project/data.json backup archives
+
 
 
 ## 🔑 Key Features
