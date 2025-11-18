@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 JuraZZik Support Bot
-Version: 2.5.10
+Version: 2.6.0
 Build Date: 2025-11-18
 
 Telegram Support Bot with ticket system, admin panel, and backup functionality.

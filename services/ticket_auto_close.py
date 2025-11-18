@@ -1,13 +1,15 @@
 import logging
 from datetime import datetime, timedelta
 
-from config import AUTO_CLOSE_AFTER_HOURS, TIMEZONE, ADMIN_ID
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+from config import AUTO_CLOSE_AFTER_HOURS, TIMEZONE
 from storage.data_manager import data_manager
 from services.alerts import alert_service
 from services.tickets import ticket_service
 from utils.locale_helper import get_admin_language, get_user_language
 from utils.formatters import format_ticket_card
-from locales import _
+from locales import _ , get_text
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ async def auto_close_inactive_tickets() -> None:
         logger.debug("Checking %d open tickets for auto-close", len(open_tickets))
 
         for ticket in open_tickets:
-            # Check if last actor was support (admin replied last)
+            # Only close if last actor was support (admin replied last)
             if ticket.last_actor != "support":
                 logger.debug(
                     "Ticket %s skipped: last actor was '%s', not 'support' (waiting for user reply)",
@@ -82,14 +84,13 @@ async def auto_close_inactive_tickets() -> None:
 
         logger.info("Auto-closed %d inactive ticket(s)", len(closed_tickets))
 
-        # Notify admin and users for each closed ticket
         admin_lang = get_admin_language()
 
         for ticket_info in closed_tickets:
             ticket_id = ticket_info["id"]
             user_id = ticket_info["user_id"]
 
-            # 1) Админ: текстовый алерт + краткая карточка
+            # 1) Admin: alert + ticket card
             try:
                 ticket = ticket_service.get_ticket(ticket_id)
                 if ticket:
@@ -120,7 +121,7 @@ async def auto_close_inactive_tickets() -> None:
                     exc_info=True,
                 )
 
-            # 2) Пользователь: уведомление о том, что тикет закрыт автоматически
+            # 2) User: auto-close notification + button to create new ticket
             try:
                 user_lang = get_user_language(user_id)
                 user_message = _(
@@ -128,7 +129,21 @@ async def auto_close_inactive_tickets() -> None:
                     ticket_id=ticket_id,
                     hours=AUTO_CLOSE_AFTER_HOURS,
                 )
-                await alert_service.send_user_message(user_id, user_message)
+
+                keyboard = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                get_text("buttons.ask_question", lang=user_lang),
+                                callback_data="user_start_question",
+                            )
+                        ]
+                    ]
+                )
+
+                await alert_service.send_user_message(
+                    user_id, user_message, reply_markup=keyboard
+                )
                 logger.info(
                     "Sent auto-close notification to user %s for ticket %s",
                     user_id,

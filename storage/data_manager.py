@@ -2,10 +2,10 @@ import json
 import os
 import logging
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from storage.models import Ticket
-from config import DATA_FILE
+from config import DATA_FILE, TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -269,10 +269,11 @@ class DataManager:
 
     # ---------- stats ----------
 
-    def get_stats(self) -> dict:
-        """Get statistics."""
+    def get_stats(self, recent_days: int = 30) -> dict:
+        """Get statistics, including recent period and auto-close stats."""
         tickets = self.get_all_tickets()
 
+        # Rating stats
         rated_values = [
             t.rating
             for t in tickets
@@ -281,7 +282,18 @@ class DataManager:
         rated_tickets = len(rated_values)
         avg_rating = sum(rated_values) / rated_tickets if rated_tickets else None
 
-        return {
+        # Auto-close candidates: tickets where last move was by support
+        # and status is still open (new/working)
+        auto_close_waiting = len(
+            [
+                t
+                for t in tickets
+                if t.status in ["new", "working"]
+                and getattr(t, "last_actor", None) == "support"
+            ]
+        )
+
+        stats: dict = {
             "total_users": len(self.data["users"]),
             "total_tickets": len(tickets),
             "active_tickets": len(
@@ -290,7 +302,42 @@ class DataManager:
             "closed_tickets": len([t for t in tickets if t.status == "done"]),
             "rated_tickets": rated_tickets,
             "avg_rating": round(avg_rating, 2) if avg_rating is not None else None,
+            "auto_close_waiting": auto_close_waiting,
         }
+
+        # Recent period stats (rolling last N days)
+        try:
+            now = datetime.now(TIMEZONE)
+        except Exception:
+            now = datetime.utcnow()
+        cutoff = now - timedelta(days=recent_days)
+
+        recent_created = 0
+        recent_closed = 0
+
+        for t in tickets:
+            # created
+            created_at = getattr(t, "created_at", None)
+            if isinstance(created_at, datetime):
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=TIMEZONE)
+                if created_at >= cutoff:
+                    recent_created += 1
+
+            # closed in period
+            if t.status == "done":
+                last_activity = getattr(t, "last_activity_at", None)
+                if isinstance(last_activity, datetime):
+                    if last_activity.tzinfo is None:
+                        last_activity = last_activity.replace(tzinfo=TIMEZONE)
+                    if last_activity >= cutoff:
+                        recent_closed += 1
+
+        stats["recent_days"] = recent_days
+        stats["recent_created"] = recent_created
+        stats["recent_closed"] = recent_closed
+
+        return stats
 
 
 # Global instance

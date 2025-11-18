@@ -530,8 +530,13 @@ async def handle_admin_reply(
 
     admin_lang = get_admin_language()
 
+    # Ответ админу с ID тикета
     await update.message.reply_text(
-        get_text("messages.answer_sent", lang=admin_lang),
+        get_text(
+            "messages.answer_sent",
+            lang=admin_lang,
+            ticket_id=ticket_id,
+        ),
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -606,7 +611,11 @@ async def media_handler(
                 admin_lang = get_admin_language()
 
                 await update.message.reply_text(
-                    get_text("messages.answer_sent", lang=admin_lang),
+                    get_text(
+                        "messages.answer_sent",
+                        lang=admin_lang,
+                        ticket_id=ticket_id,
+                    ),
                     reply_markup=ReplyKeyboardRemove(),
                 )
 

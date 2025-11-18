@@ -7,8 +7,10 @@ with proper localization and timezone conversion.
 """
 
 from datetime import datetime
+import math
 import pytz
-from config import TIMEZONE, TICKET_HISTORY_LIMIT, ADMIN_ID, DEFAULT_LOCALE
+
+from config import TIMEZONE, TICKET_HISTORY_LIMIT, ADMIN_ID, DEFAULT_LOCALE, AUTO_CLOSE_AFTER_HOURS
 from locales import get_text
 from utils.locale_helper import get_admin_language
 from storage.data_manager import data_manager
@@ -39,7 +41,7 @@ def format_ticket_brief(ticket) -> str:
         if ticket.messages:
             first_msg = ticket.messages[0]
             # Handle Message object (has 'text' attribute)
-            if hasattr(first_msg, 'text'):
+            if hasattr(first_msg, "text"):
                 msg_preview = (first_msg.text[:30] + "...") if first_msg.text else "[empty]"
             # Handle dict format
             elif isinstance(first_msg, dict):
@@ -100,7 +102,7 @@ def format_ticket_card(ticket) -> str:
     status_names = {
         "new": get_text("status_names.new", lang=admin_lang),
         "working": get_text("status_names.working", lang=admin_lang),
-        "done": get_text("status_names.done", lang=admin_lang)
+        "done": get_text("status_names.done", lang=admin_lang),
     }
 
     if ticket.username:
@@ -118,12 +120,64 @@ def format_ticket_card(ticket) -> str:
         f"📅 {get_text('ui.created_label', lang=admin_lang)}: {created_str}",
     ]
 
+    # ---------- чей ход ----------
+    last_actor = getattr(ticket, "last_actor", None)
+    if last_actor == "user":
+        # Пользователь писал последним → ход за поддержкой
+        turn_line = get_text("ui.turn_support", lang=admin_lang)
+    elif last_actor == "support":
+        # Поддержка писала последней → ход за пользователем
+        turn_line = get_text("ui.turn_user", lang=admin_lang)
+    else:
+        turn_line = get_text("ui.turn_unknown", lang=admin_lang)
+
+    lines.append(turn_line)
+
+    # ---------- авто‑закрытие ----------
+    # Показываем только если тикет ещё открыт и последний ход был за поддержкой
+    if ticket.status in ("new", "working") and last_actor == "support":
+        try:
+            tz = pytz.timezone(TIMEZONE)
+        except Exception:
+            tz = pytz.UTC
+
+        # now в нужной TZ (aware)
+        now = datetime.now(tz)
+
+        # last_activity: берём last_activity_at или created_at
+        last_activity = getattr(ticket, "last_activity_at", None) or ticket.created_at
+
+        # Приводим last_activity к той же TZ, делая aware при необходимости
+        try:
+            if last_activity.tzinfo is None:
+                # считаем, что локальное сохранённое время уже в TIMEZONE
+                last_activity = tz.localize(last_activity)
+            else:
+                last_activity = last_activity.astimezone(tz)
+        except Exception:
+            # В крайнем случае считаем, что активности не было
+            last_activity = now
+
+        hours_passed = (now - last_activity).total_seconds() / 3600
+        hours_left = AUTO_CLOSE_AFTER_HOURS - hours_passed
+
+        if hours_left <= 0:
+            auto_close_line = get_text("ui.auto_close_overdue", lang=admin_lang)
+        else:
+            hours_left_ceil = math.ceil(hours_left)
+            auto_close_line = get_text(
+                "ui.auto_close_expected",
+                lang=admin_lang,
+                hours=hours_left_ceil,
+            )
+        lines.append(auto_close_line)
+
     # Add rating if present
-    if hasattr(ticket, 'rating') and ticket.rating:
+    if hasattr(ticket, "rating") and ticket.rating:
         rating_texts = {
             "excellent": get_text("rating.excellent", lang=admin_lang),
             "good": get_text("rating.good", lang=admin_lang),
-            "ok": get_text("rating.ok", lang=admin_lang)
+            "ok": get_text("rating.ok", lang=admin_lang),
         }
         rating_display = rating_texts.get(ticket.rating, ticket.rating)
         lines.append(f"⭐ {get_text('ui.rating_label', lang=admin_lang)}: {rating_display}")
@@ -134,24 +188,24 @@ def format_ticket_card(ticket) -> str:
     if ticket.messages:
         # Limit messages shown (newest first or all depending on config)
         messages_to_show = (
-            ticket.messages[-TICKET_HISTORY_LIMIT:] 
-            if TICKET_HISTORY_LIMIT > 0 
+            ticket.messages[-TICKET_HISTORY_LIMIT:]
+            if TICKET_HISTORY_LIMIT > 0
             else ticket.messages
         )
 
         for msg in messages_to_show:
             try:
                 # Handle Message object
-                if hasattr(msg, 'sender'):
+                if hasattr(msg, "sender"):
                     sender_label = (
-                        f"👤 {get_text('ui.user_label', lang=admin_lang)}" 
-                        if msg.sender == "user" 
+                        f"👤 {get_text('ui.user_label', lang=admin_lang)}"
+                        if msg.sender == "user"
                         else f"🛠 {get_text('ui.support_label', lang=admin_lang)}"
                     )
-                    # FIXED: Use 'at' field instead of 'timestamp'
-                    timestamp = msg.at if hasattr(msg, 'at') else datetime.now()
+                    # Use 'at' field instead of 'timestamp'
+                    timestamp = msg.at if hasattr(msg, "at") else datetime.now()
                     time_str = _get_local_time(timestamp)
-                    text = msg.text if hasattr(msg, 'text') else str(msg)
+                    text = msg.text if hasattr(msg, "text") else str(msg)
 
                     lines.append(f"{sender_label} [{time_str}]:")
                     lines.append(f"{text}")
@@ -212,7 +266,7 @@ def format_ticket_preview(ticket) -> str:
         if ticket.messages:
             first_msg = ticket.messages[0]
             # Handle Message object
-            if hasattr(first_msg, 'text'):
+            if hasattr(first_msg, "text"):
                 msg_preview = first_msg.text[:100] if first_msg.text else "[empty]"
             # Handle dict format
             elif isinstance(first_msg, dict):
@@ -224,8 +278,19 @@ def format_ticket_preview(ticket) -> str:
     except Exception:
         msg_preview = "[error reading message]"
 
+    # Индикатор "чей ход" в превью
+    last_actor = getattr(ticket, "last_actor", None)
+    if last_actor == "user":
+        # пользователь писал последним → ход за поддержкой
+        turn_emoji = " 🛠"
+    elif last_actor == "support":
+        # поддержка писала последней → ход за пользователем
+        turn_emoji = " 👤"
+    else:
+        turn_emoji = ""
+
     return (
-        f"{status_emoji} {ticket.id}\n"
+        f"{status_emoji} {ticket.id}{turn_emoji}\n"
         f"👤 {username}\n"
         f"📅 {created_str}\n"
         f"💬 {msg_preview}..."

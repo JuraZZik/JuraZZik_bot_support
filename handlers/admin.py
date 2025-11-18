@@ -63,7 +63,17 @@ async def show_inbox(
     else:
         tickets = data_manager.get_tickets_by_status(filter_status)
 
-    tickets = sorted(tickets, key=lambda t: t.created_at, reverse=True)
+    # Сортировка: сначала тикеты, где ход за поддержкой (last_actor == "user"),
+    # внутри групп — по времени создания (новые выше)
+    def sort_key(t):
+        waiting_support = 0 if getattr(t, "last_actor", None) == "user" else 1
+        try:
+            ts = t.created_at.timestamp()
+        except Exception:
+            ts = 0
+        return (waiting_support, -ts)
+
+    tickets = sorted(tickets, key=sort_key)
 
     total_tickets = len(tickets)
     total_pages = max(1, (total_tickets + PAGE_SIZE - 1) // PAGE_SIZE)
