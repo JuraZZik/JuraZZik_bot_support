@@ -18,12 +18,18 @@ from utils.states import (
     STATE_AWAITING_UNBAN_USER_ID,
     STATE_AWAITING_REPLY,
 )
+from utils.admin_help import get_admin_help_text
+from utils.keyboards import get_admin_help_keyboard
 
 logger = logging.getLogger(__name__)
 
 
-async def inbox_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle incoming tickets inbox."""
+async def inbox_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Entry point for admin inbox.
+
+    Resets filter and page to defaults and shows the inbox list.
+    """
     user = update.effective_user
 
     if user.id != ADMIN_ID:
@@ -41,7 +47,14 @@ async def show_inbox(
     status_filter: str | None = None,
     page: int | None = None,
 ) -> None:
-    """Display ticket list with pagination and filtering."""
+    """
+    Display ticket list for admin with pagination and status filter.
+
+    - Tickets can be filtered by status: all/new/working/done.
+    - Tickets are sorted so that tickets where support's turn comes first,
+      then by creation time (newer tickets above).
+    - Uses PAGE_SIZE from config for pagination.
+    """
     user_lang = get_admin_language()
 
     logger.info("DEBUG: PAGE_SIZE = %s", PAGE_SIZE)
@@ -63,8 +76,9 @@ async def show_inbox(
     else:
         tickets = data_manager.get_tickets_by_status(filter_status)
 
-    # Сортировка: сначала тикеты, где ход за поддержкой (last_actor == "user"),
-    # внутри групп — по времени создания (новые выше)
+    # Sorting rules:
+    # 1. Tickets where last_actor == "user" (support's turn) go first.
+    # 2. Inside each group, newer tickets go above older ones.
     def sort_key(t):
         waiting_support = 0 if getattr(t, "last_actor", None) == "user" else 1
         try:
@@ -113,6 +127,7 @@ async def show_inbox(
         previews = [format_ticket_preview(t) for t in page_tickets]
         text = header + "\n".join(previews)
 
+    # Filter buttons row
     filter_row: list[InlineKeyboardButton] = []
     for flt in ["all", "new", "working", "done"]:
         label = filter_names[flt]
@@ -124,6 +139,7 @@ async def show_inbox(
             )
         )
 
+    # Pagination row (back/forward)
     nav_row: list[InlineKeyboardButton] = []
     if current_page > 0:
         nav_row.append(
@@ -140,6 +156,7 @@ async def show_inbox(
             )
         )
 
+    # Search row
     search_row = [
         InlineKeyboardButton(
             get_text("search.button", lang=user_lang),
@@ -147,6 +164,7 @@ async def show_inbox(
         )
     ]
 
+    # Home row
     home_row = [
         InlineKeyboardButton(
             get_text("buttons.main_menu", lang=user_lang),
@@ -168,7 +186,13 @@ async def show_inbox(
 async def show_ticket_card(
     update: Update, context: ContextTypes.DEFAULT_TYPE, ticket_id: str
 ) -> None:
-    """Display full ticket card."""
+    """
+    Display full ticket card for admin.
+
+    Shows full ticket details and context actions depending on ticket status:
+    - New: Take in work, Close.
+    - Working: Reply, Close.
+    """
     user_lang = get_admin_language()
 
     ticket = ticket_service.get_ticket(ticket_id)
@@ -214,6 +238,7 @@ async def show_ticket_card(
             ]
         )
 
+    # Back to inbox
     actions.append(
         [
             InlineKeyboardButton(
@@ -222,6 +247,7 @@ async def show_ticket_card(
             )
         ]
     )
+    # Back to main admin menu
     actions.append(
         [
             InlineKeyboardButton(
@@ -237,7 +263,15 @@ async def show_ticket_card(
 
 
 async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display statistics."""
+    """
+    Display bot statistics screen for admin.
+
+    Includes:
+    - total users / tickets,
+    - active / closed tickets,
+    - tickets waiting for auto-close,
+    - rating stats and banned users count.
+    """
     user = update.effective_user
     user_lang = get_admin_language()
 
@@ -265,7 +299,17 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display settings menu."""
+    """
+    Display settings menu for admin.
+
+    Includes:
+    - ban/unban,
+    - bans list,
+    - clear active tickets,
+    - create backup,
+    - info/debug screens,
+    - change language.
+    """
     user = update.effective_user
     user_lang = get_admin_language()
 
@@ -284,7 +328,15 @@ async def settings_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def home_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Display admin main menu."""
+    """
+    Display admin main menu.
+
+    Uses inline keyboard with:
+    - Inbox,
+    - Statistics,
+    - Settings,
+    - Help (admin instructions + donate).
+    """
     user = update.effective_user
     user_lang = get_admin_language()
 
@@ -302,8 +354,47 @@ async def home_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
+async def admin_help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Display detailed admin help screen with donate button.
+
+    Text is locale-aware (ru/en) and describes:
+    - Inbox and ticket card,
+    - Take in work / Reply / Close,
+    - Auto-close logic,
+    - Statistics, backups, logs,
+    - Bans and languages,
+    - Optional project support (donation).
+    """
+    user = update.effective_user
+
+    if user.id != ADMIN_ID:
+        return
+
+    text = get_admin_help_text()
+    keyboard = get_admin_help_keyboard()
+
+    await show_admin_screen(
+        update,
+        context,
+        text,
+        keyboard,
+        screen_type="help",
+    )
+
+
 async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle text messages from admin."""
+    """
+    Handle plain text messages from admin.
+
+    This handler is state-driven:
+    - STATE_SEARCH_TICKET_INPUT: search ticket by ID.
+    - STATE_AWAITING_BAN_USER_ID: read user ID to ban.
+    - STATE_AWAITING_BAN_REASON: read ban reason and apply ban.
+    - STATE_AWAITING_UNBAN_USER_ID: read user ID to unban.
+    - STATE_AWAITING_REPLY: admin reply to user ticket.
+    - default: show a short instruction hint.
+    """
     user = update.effective_user
     user_lang = get_admin_language()
     text = update.message.text
@@ -319,7 +410,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text[:20],
     )
 
-    # Search ticket by ID
+    # --- Search ticket by ID ---
     if state == STATE_SEARCH_TICKET_INPUT:
         search_input = text.strip().replace("#", "")
         tickets_list = data_manager.get_all_tickets()
@@ -342,6 +433,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if search_menu_msg_id:
             if not found_ticket:
+                # Update existing search message: not found
                 try:
                     await context.bot.edit_message_text(
                         chat_id=ADMIN_ID,
@@ -383,6 +475,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Failed to edit search result (not found): %s", e
                     )
             else:
+                # Update existing search message: found ticket
                 try:
                     await context.bot.edit_message_text(
                         chat_id=ADMIN_ID,
@@ -429,6 +522,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Failed to edit search result (found): %s", e
                     )
 
+        # Fallback: send new message if we failed to update existing one
         if not found_ticket:
             await context.bot.send_message(
                 chat_id=ADMIN_ID,
@@ -493,7 +587,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         return
 
-    # Handle ban user ID input
+    # --- Handle ban user ID input ---
     if state == STATE_AWAITING_BAN_USER_ID:
         try:
             user_id = int(text.strip())
@@ -509,7 +603,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             return
 
-    # Handle ban reason input
+    # --- Handle ban reason input ---
     elif state == STATE_AWAITING_BAN_REASON:
         user_id = context.user_data.get("ban_user_id")
         if user_id:
@@ -575,7 +669,7 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         return
 
-    # Handle unban user ID input
+    # --- Handle unban user ID input ---
     elif state == STATE_AWAITING_UNBAN_USER_ID:
         try:
             user_id = int(text.strip())
@@ -644,13 +738,14 @@ async def admin_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         return
 
-    # Handle admin reply to ticket (text)
+    # --- Handle admin reply to ticket (plain text) ---
     elif state == STATE_AWAITING_REPLY:
         from handlers.user import handle_admin_reply
 
         await handle_admin_reply(update, context, text)
         return
 
+    # --- Default: show small hint for admin ---
     else:
         msg = await update.message.reply_text(
             get_text("admin.reply_instruction", lang=user_lang),
@@ -664,3 +759,4 @@ admin_inbox = inbox_handler
 admin_stats = stats_handler
 admin_settings = settings_handler
 admin_home = home_handler
+admin_help = admin_help_handler

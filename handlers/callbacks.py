@@ -43,7 +43,7 @@ from utils.states import (
 logger = logging.getLogger(__name__)
 
 
-async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Main callback query handler - routes all button presses."""
     query = update.callback_query
     data = query.data
@@ -240,6 +240,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Show admin settings
     elif data == "admin_settings":
         await handle_admin_settings(update, context)
+        return
+
+    # Show admin help (instructions + donate)
+    elif data == "admin_help":
+        from handlers.admin import admin_help_handler
+
+        await admin_help_handler(update, context)
         return
 
     # Start ban user flow

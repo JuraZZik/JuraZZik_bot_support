@@ -22,7 +22,9 @@
     "close": "🔒 Close",
     "enter_reply": "Enter Reply",
     "write_suggestion": "✏️ Write Suggestion",
-    "write_review": "✏️ Write Review"
+    "write_review": "✏️ Write Review",
+    "admin_help": "❓ Help",
+    "donate_support": "💚 Support development"
   },
   "messages": {
     "return_to_menu": "Use the menu to select an action.",

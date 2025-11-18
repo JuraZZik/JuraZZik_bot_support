@@ -1,6 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from locales import get_text, get_user_locale
 from config import DEFAULT_LOCALE
+from utils.locale_helper import get_admin_language
 
 
 def _get_user_lang(user_id: int) -> str:
@@ -195,6 +196,42 @@ def get_admin_main_keyboard(user_lang: str | None = None) -> InlineKeyboardMarku
                 InlineKeyboardButton(
                     get_text("buttons.settings", lang=user_lang),
                     callback_data="admin_settings",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    get_text("buttons.admin_help", lang=user_lang),
+                    callback_data="admin_help",
+                )
+            ],
+        ]
+    )
+
+
+# ===== Admin help keyboard with donate =====
+
+DONATE_URL = "https://t.me/tribute/app?startapp=dAi3"
+
+def get_admin_help_keyboard(user_lang: str | None = None) -> InlineKeyboardMarkup:
+    """
+    Keyboard for admin help screen:
+    - donate button
+    - back to admin main menu
+    """
+    lang = user_lang or get_admin_language() or DEFAULT_LOCALE
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    get_text("buttons.donate_support", lang=lang),
+                    url=DONATE_URL,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    get_text("buttons.main_menu", lang=lang),
+                    callback_data="admin_home",
                 )
             ],
         ]
