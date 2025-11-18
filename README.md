@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-2.6.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-[![Donate](https://img.shields.io/badge/Donate-Telegram%20Tribute-brightgreen)](https://t.me/your_channel/123)
+[![Donate](https://img.shields.io/badge/Donate-Telegram%20Tribute-brightgreen)](https://t.me/tribute/app?startapp=dAi3)
 ---
 
 # Support Bot Project Overview
