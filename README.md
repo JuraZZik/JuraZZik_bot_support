@@ -59,27 +59,28 @@ This is a **Telegram bot for managing support tickets** with a complete ticket p
 
 ## 📁 Project Structure
 
+```text
 bot_support/
-├── main.py # Entry point
-├── config.py # Configuration
-├── requirements.txt # Dependencies
-├── docker-compose.yml # Docker config
-├── .env.example # Example .env file
-├── handlers/ # Command handlers
-├── services/ # Services
-│ ├── tickets.py # Ticket management
-│ ├── ticket_auto_close.py # Auto-close logic
-│ ├── feedback.py # Feedback system
-│ ├── scheduler.py # Job scheduler
-│ └── alerts.py # Notifications
-├── storage/ # Data management
-├── locales/ # Localization (ru, en)
-├── utils/ # Helper functions
-└── bot_data/ # Data (created automatically)
-├── data.json # Main data
-├── banned.json # Blocked users list
-├── bot.log # Logs
-└── backups/ # Backups
+├── main.py               # Entry point
+├── config.py             # Configuration
+├── requirements.txt      # Dependencies
+├── docker-compose.yml    # Docker config
+├── .env.example          # Example .env file
+├── handlers/             # Command handlers
+├── services/             # Services
+│   ├── tickets.py        # Ticket management
+│   ├── ticket_auto_close.py # Auto-close logic
+│   ├── feedback.py       # Feedback system
+│   ├── scheduler.py      # Job scheduler
+│   └── alerts.py         # Notifications
+├── storage/              # Data management
+├── locales/              # Localization (ru, en)
+├── utils/                # Helper functions
+└── bot_data/             # Data (created automatically)
+    ├── data.json         # Main data
+    ├── banned.json       # Blocked users list
+    ├── bot.log           # Logs
+    └── backups/          # Backups
 
 
 ## 🔑 Key Features
