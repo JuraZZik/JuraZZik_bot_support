@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from logging.handlers import RotatingFileHandler
 
+from colorlog import ColoredFormatter
+
 # ========================================
 # BOT INFORMATION
 # ========================================
@@ -100,10 +102,8 @@ AUTO_SAVE_INTERVAL = int(os.getenv("AUTO_SAVE_INTERVAL", "300"))
 # ========== BAN DETECTION & MANAGEMENT ==========
 
 BAN_NAME_LINK_CHECK = os.getenv("BAN_NAME_LINK_CHECK", "false").lower() == "true"
-# Default reason aligned with .env.example
 BAN_DEFAULT_REASON = os.getenv("BAN_DEFAULT_REASON", "Violation of rules")
 BAN_ON_NAME_LINK = os.getenv("BAN_ON_NAME_LINK", "false").lower() == "true"
-# Default stricter pattern aligned with .env.example
 NAME_LINK_PATTERN = os.getenv(
     "NAME_LINK_PATTERN",
     r"https?://|www\.|\.ru|\.com|\.org|\.io|@\w+|t\.me",
@@ -256,31 +256,56 @@ class TelegramErrorHandler(logging.Handler):
 
 def setup_logging() -> None:
     """Configure logging system."""
-    log_format = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    # Формат для файла (без цветов, выровненные колонки)
+    file_log_format = "%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
+
+    # Формат для консоли (с цветами + те же колонки)
+    console_log_format = "%(log_color)s%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s"
 
     level = getattr(logging, LOG_LEVEL.upper(), logging.INFO)
 
-    handlers: list[logging.Handler] = [
-        logging.StreamHandler(),
-        RotatingFileHandler(
-            LOG_FILE,
-            maxBytes=LOG_MAX_SIZE_MB * 1024 * 1024,
-            backupCount=LOG_BACKUP_COUNT,
-            encoding="utf-8",
-        ),
-    ]
+    file_formatter = logging.Formatter(file_log_format, datefmt=date_format)
+
+    console_formatter = ColoredFormatter(
+        console_log_format,
+        datefmt=date_format,
+        log_colors={
+            "DEBUG": "reset",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "bold_red",
+        },
+    )
+
+    # File handler with rotation
+    file_handler = RotatingFileHandler(
+        LOG_FILE,
+        maxBytes=LOG_MAX_SIZE_MB * 1024 * 1024,
+        backupCount=LOG_BACKUP_COUNT,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(file_formatter)
+    file_handler.setLevel(level)
+
+    # Console handler (цветной)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(console_formatter)
+    console_handler.setLevel(level)
+
+    handlers: list[logging.Handler] = [file_handler, console_handler]
 
     if ERROR_ALERTS_ENABLED:
         handlers.append(TelegramErrorHandler())
 
-    logging.basicConfig(
-        level=level,
-        format=log_format,
-        datefmt=date_format,
-        handlers=handlers,
-    )
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers.clear()
+    for h in handlers:
+        root.addHandler(h)
 
+    # Урезаем болтовню сторонних библиотек
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 

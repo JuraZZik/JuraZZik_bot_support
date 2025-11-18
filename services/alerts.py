@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 import os
 from typing import Optional
@@ -261,12 +262,17 @@ class AlertService:
         data_json = os.path.join(DATA_DIR, "data.json")
         log_file = os.path.join(DATA_DIR, "bot.log")
 
-        text = (
-            f"{_('alerts.bot_started')}\n"
+        # Краткое summary про бот/версию/билд
+        startup_summary = (
+            "✅ Бот запущен\n"
             f"🤖 Bot: {BOT_NAME}\n"
             f"🔖 Version: {BOT_VERSION}\n"
-            f"📅 Build: {BOT_BUILD_DATE}\n\n"
-            f"{_('alerts.time', time=now)}\n\n"
+            f"📅 Build: {BOT_BUILD_DATE}\n"
+        )
+
+        # Детали: время, файлы, статистика
+        details = (
+            f"\n{_('alerts.time', time=now)}\n\n"
             f"{_('alerts.files')}\n"
             f"{_('alerts.file_data', status=check_path(data_json))}\n"
             f"{_('alerts.file_log', status=check_path(log_file))}\n"
@@ -275,6 +281,16 @@ class AlertService:
             f"{_('alerts.stat_active', count=stats['active_tickets'])}\n"
             f"{_('alerts.stat_total', count=stats['total_tickets'])}\n"
             f"{_('alerts.stat_users', count=stats['total_users'])}"
+        )
+
+        text = startup_summary + details
+
+        # Логируем summary одной строкой, без разъезжающихся строк в docker-логах
+        logger.info(
+            "Startup: Bot=%s | Version=%s | Build=%s",
+            BOT_NAME,
+            BOT_VERSION,
+            BOT_BUILD_DATE,
         )
 
         await self.send_alert(text)
