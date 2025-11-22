@@ -220,12 +220,16 @@ async def text_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Handle text messages from user."""
+    message = update.effective_message
+    if message is None or message.text is None:
+        return
+
     user = update.effective_user
-    text = update.message.text
+    text = message.text
     user_lang = get_user_language(user.id)
 
     if ban_manager.is_banned(user.id):
-        await update.message.reply_text(
+        await message.reply_text(
             get_text("messages.banned", lang=user_lang),
             reply_markup=ReplyKeyboardRemove(),
         )
@@ -263,7 +267,7 @@ async def text_message_handler(
                     user.id,
                     active_ticket.id,
                 )
-                await update.message.reply_text(
+                await message.reply_text(
                     get_text(
                         "messages.wait_for_admin_reply",
                         lang=user_lang,
@@ -283,7 +287,7 @@ async def text_message_handler(
         else:
             from handlers.start import get_user_inline_menu
 
-            await update.message.reply_text(
+            await message.reply_text(
                 get_text(
                     "messages.please_choose_from_menu", lang=user_lang
                 ),
@@ -506,54 +510,48 @@ async def handle_ticket_message(
 async def handle_admin_reply(
     update: Update, context: ContextTypes.DEFAULT_TYPE, text: str
 ) -> None:
-    """Handle admin reply to ticket."""
+    """Handle admin reply to ticket (with confirmation step)."""
     ticket_id = context.user_data.get("reply_ticket_id")
     if not ticket_id:
         return
 
-    ticket = ticket_service.add_message(
-        ticket_id, "support", text, ADMIN_ID
-    )
-
-    if not ticket:
-        user_lang = get_user_language(update.effective_user.id)
-        await update.message.reply_text(
-            get_text("messages.ticket_not_found", lang=user_lang),
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return
-
-    user_lang = get_user_language(ticket.user_id)
-
-    context.user_data["state"] = None
-    context.user_data["reply_ticket_id"] = None
+    # We save the text and it will be sent to the user after confirmation
+    context.user_data["pending_reply_text"] = text
 
     admin_lang = get_admin_language()
 
-    # Ответ админу с ID тикета
-    await update.message.reply_text(
-        get_text(
-            "messages.answer_sent",
+    preview_text = (
+        get_text("messages.admin_reply", lang=admin_lang)
+        + f"\n\n{text}\n\n"
+        + get_text(
+            "admin.confirm_reply_prompt",
             lang=admin_lang,
             ticket_id=ticket_id,
-        ),
-        reply_markup=ReplyKeyboardRemove(),
+        )
     )
 
-    try:
-        await context.bot.send_message(
-            chat_id=ticket.user_id,
-            text=f"{get_text('messages.admin_reply', lang=user_lang)}\n\n{text}",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-    except Exception as e:
-        logger.error(
-            "Failed to send message to user %s: %s", ticket.user_id, e
-        )
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    get_text("admin.confirm_reply_yes", lang=admin_lang),
+                    callback_data=f"reply_confirm:{ticket_id}",
+                ),
+                InlineKeyboardButton(
+                get_text("admin.confirm_reply_edit", lang=admin_lang),
+                callback_data=f"reply_edit:{ticket_id}",
+                ),
+                InlineKeyboardButton(
+                    get_text("admin.confirm_reply_no", lang=admin_lang),
+                    callback_data=f"reply_cancel:{ticket_id}",
+                ),
+            ]
+        ]
+    )
 
-    message_id = TICKET_CARD_MESSAGES.get(ticket_id)
-    await send_or_update_ticket_card(
-        context, ticket_id, action="working", message_id=message_id
+    await update.message.reply_text(
+        preview_text,
+        reply_markup=keyboard,
     )
 
 

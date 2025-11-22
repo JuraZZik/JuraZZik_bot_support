@@ -9,7 +9,7 @@ from services.alerts import alert_service
 from services.tickets import ticket_service
 from utils.locale_helper import get_admin_language, get_user_language
 from utils.formatters import format_ticket_card
-from locales import _ , get_text
+from locales import _, get_text
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +95,17 @@ async def auto_close_inactive_tickets() -> None:
                 ticket = ticket_service.get_ticket(ticket_id)
                 if ticket:
                     card_text = format_ticket_card(ticket)
-                    header = _(
+                    header = get_text(
                         "alerts.ticket_auto_closed",
+                        lang=admin_lang,
                         ticket_id=ticket_id,
                         hours=AUTO_CLOSE_AFTER_HOURS,
                     )
                     text = f"{header}\n\n{card_text}"
                 else:
-                    text = _(
+                    text = get_text(
                         "alerts.ticket_auto_closed",
+                        lang=admin_lang,
                         ticket_id=ticket_id,
                         hours=AUTO_CLOSE_AFTER_HOURS,
                     )
@@ -124,8 +126,9 @@ async def auto_close_inactive_tickets() -> None:
             # 2) User: auto-close notification + button to create new ticket
             try:
                 user_lang = get_user_language(user_id)
-                user_message = _(
+                user_message = get_text(
                     "messages.ticket_auto_closed_user",
+                    lang=user_lang,
                     ticket_id=ticket_id,
                     hours=AUTO_CLOSE_AFTER_HOURS,
                 )
@@ -142,7 +145,9 @@ async def auto_close_inactive_tickets() -> None:
                 )
 
                 await alert_service.send_user_message(
-                    user_id, user_message, reply_markup=keyboard
+                    user_id=user_id,
+                    text=user_message,
+                    reply_markup=keyboard,
                 )
                 logger.info(
                     "Sent auto-close notification to user %s for ticket %s",

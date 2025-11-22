@@ -143,12 +143,29 @@ class AlertService:
             logger.error("Failed to send backup file: %s", e, exc_info=True)
             await self.send_alert(f"❌ Backup send error: {str(e)}")
 
-    async def send_user_message(self, user_id: int, text: str) -> None:
-        """Utility: send plain text message to given user."""
+    async def send_user_message(
+        self,
+        user_id: int,
+        text: str,
+        parse_mode: str | None = None,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        disable_notification: bool = False,
+    ) -> None:
+        """
+        Utility: send message to given user.
+
+        Supports optional parse_mode, reply_markup and disable_notification.
+        """
         if not self._ensure_bot():
             return
         try:
-            await self._bot.send_message(chat_id=user_id, text=text)
+            await self._bot.send_message(
+                chat_id=user_id,
+                text=text,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
+                disable_notification=disable_notification,
+            )
         except TelegramError as e:
             logger.error(
                 "Failed to send user message to %s: %s", user_id, e, exc_info=True
@@ -285,7 +302,6 @@ class AlertService:
 
         text = startup_summary + details
 
-        # Логируем summary одной строкой, без разъезжающихся строк в docker-логах
         logger.info(
             "Startup: Bot=%s | Version=%s | Build=%s",
             BOT_NAME,

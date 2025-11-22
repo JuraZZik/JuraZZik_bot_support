@@ -12,8 +12,8 @@ from colorlog import ColoredFormatter
 # BOT INFORMATION
 # ========================================
 BOT_NAME = "JuraZZik"
-BOT_VERSION = "2.7.0"
-BOT_BUILD_DATE = "2025-11-18"
+BOT_VERSION = "2.8.0"
+BOT_BUILD_DATE = "2025-11-22"
 
 # ========================================
 # ENVIRONMENT VARIABLES

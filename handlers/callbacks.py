@@ -1,7 +1,7 @@
 import logging
 import os
 from zoneinfo import ZoneInfo
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 
 from config import (
@@ -15,7 +15,7 @@ from config import (
     RATING_ENABLED,
     ASK_MIN_LENGTH,
 )
-from locales import get_text
+from locales import get_text, _
 from utils.locale_helper import get_user_language, get_admin_language, set_user_language
 from services.tickets import ticket_service
 from services.bans import ban_manager
@@ -350,7 +350,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 message_text = (
                     f"{get_text('admin.backup_created_sent', lang=admin_lang).format(filename=backup_filename, size=size_formatted)}\n\n"
                     f"{get_text('admin.backup_directory', lang=admin_lang)}: {backup_info.get('source_dir')}\n"
-                    f"{get_text('admin.backup_excluded', lang=admin_lang)}: {backup_info.get('excluded_patterns')}\n"
+                    f"{get_text('admin.backup_exCLUDED', lang=admin_lang)}: {backup_info.get('excluded_patterns')}\n"
                     f"{get_text('admin.backup_files', lang=admin_lang)}: {backup_info.get('files_in_archive')}\n"
                     f"{get_text('admin.backup_size', lang=admin_lang)}: {size_formatted}\n"
                     f"{get_text('admin.backup_file', lang=admin_lang)}: {backup_filename}"
@@ -484,14 +484,39 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await handle_take_ticket(update, context, data)
         return
 
-    # Handle ticket closing
+    # Handle ticket closing (step 1: ask confirm)
     elif data.startswith("close:"):
+        await handle_close_confirm(update, context, data)
+        return
+
+    # Handle ticket closing (step 2: confirmed)
+    elif data.startswith("close_confirm:"):
         await handle_close_ticket(update, context, data)
         return
 
-    # Handle admin reply to ticket
+    # Handle cancel close
+    elif data.startswith("close_cancel:"):
+        await handle_close_cancel(update, context, data)
+        return
+
+    # Handle admin reply to ticket (enter reply mode)
     elif data.startswith("reply:"):
         await handle_reply_ticket(update, context, data)
+        return
+
+    # Handle admin reply confirm (send to user)
+    elif data.startswith("reply_confirm:"):
+        await handle_reply_confirm(update, context, data)
+        return
+
+    # Handle admin reply edit (re-enter text)
+    elif data.startswith("reply_edit:"):
+        await handle_reply_edit(update, context, data)
+        return
+
+    # Handle admin reply cancel
+    elif data.startswith("reply_cancel:"):
+        await handle_reply_cancel(update, context, data)
         return
 
     # Handle inbox filtering
@@ -902,7 +927,7 @@ async def handle_thank_feedback(
 async def handle_take_ticket(
     update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
 ) -> None:
-    """Handle admin taking a ticket."""
+    """Handle admin taking a ticket and notify user."""
     ticket_id = data.split(":")[1]
     admin_lang = get_admin_language()
 
@@ -916,9 +941,93 @@ async def handle_take_ticket(
 
     admin_id = update.effective_user.id
 
+    # Update ticket status
     ticket_service.take_ticket(ticket_id, admin_id)
     logger.info("Admin %s took ticket %s", admin_id, ticket_id)
 
+    # Notify user that ticket is taken in work
+    try:
+        user_id = ticket.user_id
+        user_lang = get_user_language(user_id)
+
+        user_text = get_text(
+            "messages.ticket_taken_in_work",
+            lang=user_lang,
+            ticket_id=ticket_id,
+        )
+
+        await alert_service.send_user_message(
+            user_id=user_id,
+            text=user_text,
+        )
+        logger.info(
+            "Notified user %s that ticket %s was taken in work",
+            user_id,
+            ticket_id,
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to notify user about ticket %s being taken in work: %s",
+            ticket_id,
+            e,
+            exc_info=True,
+        )
+
+    from handlers.admin import show_ticket_card
+
+    await show_ticket_card(update, context, ticket_id)
+
+
+async def handle_close_confirm(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    """Show confirmation dialog before closing a ticket."""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(
+            get_text("errors.ticket_not_found", lang=admin_lang),
+            show_alert=True,
+        )
+        return
+
+    text = get_text(
+        "admin.confirm_close_title",
+        lang=admin_lang,
+        ticket_id=ticket_id,
+    )
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    get_text("admin.confirm_close_yes", lang=admin_lang),
+                    callback_data=f"close_confirm:{ticket_id}",
+                ),
+                InlineKeyboardButton(
+                    get_text("admin.confirm_close_no", lang=admin_lang),
+                    callback_data=f"close_cancel:{ticket_id}",
+                ),
+            ]
+        ]
+    )
+
+    try:
+        await update.callback_query.edit_message_text(
+            text=text,
+            reply_markup=keyboard,
+        )
+    except Exception as e:
+        logger.warning("Failed to edit message for close confirm: %s", e)
+
+
+async def handle_close_cancel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    """Cancel close confirmation and show ticket card again."""
+    ticket_id = data.split(":")[1]
     from handlers.admin import show_ticket_card
 
     await show_ticket_card(update, context, ticket_id)
@@ -928,6 +1037,7 @@ async def handle_close_ticket(
     update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
 ) -> None:
     """Handle closing a ticket."""
+    # data приходит как close_confirm:{ticket_id}
     ticket_id = data.split(":")[1]
     admin_lang = get_admin_language()
 
@@ -998,6 +1108,111 @@ async def handle_reply_ticket(
     await update.callback_query.message.reply_text(
         get_text("admin.enter_reply", lang=admin_lang)
     )
+
+
+async def handle_reply_confirm(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    """Confirm admin reply and send message to user."""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(
+            get_text("errors.ticket_not_found", lang=admin_lang),
+            show_alert=True,
+        )
+        return
+
+    text = context.user_data.get("pending_reply_text")
+    if not text:
+        await update.callback_query.answer(
+            get_text("errors.failed_to_send", lang=admin_lang),
+            show_alert=True,
+        )
+        return
+
+    ticket = ticket_service.add_message(
+        ticket_id, "support", text, ADMIN_ID
+    )
+    if not ticket:
+        await update.callback_query.answer(
+            get_text("errors.ticket_not_found", lang=admin_lang),
+            show_alert=True,
+        )
+        return
+
+    user_lang = get_user_language(ticket.user_id)
+
+    context.user_data["state"] = None
+    context.user_data["reply_ticket_id"] = None
+    context.user_data["pending_reply_text"] = None
+
+    await update.callback_query.message.reply_text(
+        get_text(
+            "messages.answer_sent",
+            lang=admin_lang,
+            ticket_id=ticket_id,
+        )
+    )
+
+    try:
+        await context.bot.send_message(
+            chat_id=ticket.user_id,
+            text=f"{get_text('messages.admin_reply', lang=user_lang)}\n\n{text}",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to send message to user %s: %s", ticket.user_id, e
+        )
+
+    from handlers.user import TICKET_CARD_MESSAGES, send_or_update_ticket_card
+
+    message_id = TICKET_CARD_MESSAGES.get(ticket_id)
+    await send_or_update_ticket_card(
+        context, ticket_id, action="working", message_id=message_id
+    )
+
+    await update.callback_query.answer()
+
+
+async def handle_reply_edit(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    """Return admin to reply input, allowing to change text."""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    context.user_data["state"] = STATE_AWAITING_REPLY
+    context.user_data["reply_ticket_id"] = ticket_id
+    context.user_data["pending_reply_text"] = None
+
+    await update.callback_query.answer()
+    await update.callback_query.message.reply_text(
+        get_text("admin.enter_reply", lang=admin_lang)
+    )
+
+
+async def handle_reply_cancel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
+) -> None:
+    """Cancel admin reply sending, keep admin message as draft."""
+    ticket_id = data.split(":")[1]
+    admin_lang = get_admin_language()
+
+    context.user_data["state"] = None
+    context.user_data["reply_ticket_id"] = None
+    context.user_data["pending_reply_text"] = None
+
+    await update.callback_query.answer(
+        get_text("buttons.cancel", lang=admin_lang),
+        show_alert=False,
+    )
+
+    from handlers.admin import show_ticket_card
+    await show_ticket_card(update, context, ticket_id)
 
 
 async def handle_inbox_filter(
