@@ -1,7 +1,14 @@
 import logging
 import os
+from pathlib import Path
 from zoneinfo import ZoneInfo
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
+    __version__ as PTB_VERSION,
+)
 from telegram.ext import ContextTypes
 
 from config import (
@@ -350,7 +357,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 message_text = (
                     f"{get_text('admin.backup_created_sent', lang=admin_lang).format(filename=backup_filename, size=size_formatted)}\n\n"
                     f"{get_text('admin.backup_directory', lang=admin_lang)}: {backup_info.get('source_dir')}\n"
-                    f"{get_text('admin.backup_exCLUDED', lang=admin_lang)}: {backup_info.get('excluded_patterns')}\n"
+                    f"{get_text('admin.backup_excluded', lang=admin_lang)}: {backup_info.get('excluded_patterns')}\n"
                     f"{get_text('admin.backup_files', lang=admin_lang)}: {backup_info.get('files_in_archive')}\n"
                     f"{get_text('admin.backup_size', lang=admin_lang)}: {size_formatted}\n"
                     f"{get_text('admin.backup_file', lang=admin_lang)}: {backup_filename}"
@@ -704,6 +711,7 @@ async def handle_admin_info(
         feedback_cooldown="✅" if FEEDBACK_COOLDOWN_ENABLED else "❌",
         total_users=stats["total_users"],
         total_tickets=stats["total_tickets"],
+        ptb_version=PTB_VERSION,
     )
 
     keyboard = InlineKeyboardMarkup(
@@ -735,6 +743,24 @@ async def handle_admin_debug(
         AUTO_CLOSE_AFTER_HOURS,
     )
 
+    data_json_path = Path(DATA_DIR) / "data.json"
+    if data_json_path.exists():
+        data_size_mb = data_json_path.stat().st_size / (1024 * 1024)
+        data_size_str = f"{data_size_mb:.2f} MB"
+    else:
+        data_size_str = "n/a"
+
+    backups_dir = Path(BACKUP_DIR)
+    last_backup_name = "none"
+    if backups_dir.exists():
+        backups = sorted(
+            list(backups_dir.glob("*.zip")) + list(backups_dir.glob("*.tar.gz")),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if backups:
+            last_backup_name = backups[0].name
+
     text = get_text(
         "admin.debug_text",
         lang=admin_lang,
@@ -744,6 +770,8 @@ async def handle_admin_debug(
         log_level=LOG_LEVEL,
         backup_interval_hours=STORAGE_BACKUP_INTERVAL_HOURS,
         auto_close_hours=AUTO_CLOSE_AFTER_HOURS,
+        data_size=data_size_str,
+        last_backup=last_backup_name,
     )
 
     keyboard = InlineKeyboardMarkup(
@@ -941,11 +969,9 @@ async def handle_take_ticket(
 
     admin_id = update.effective_user.id
 
-    # Update ticket status
     ticket_service.take_ticket(ticket_id, admin_id)
     logger.info("Admin %s took ticket %s", admin_id, ticket_id)
 
-    # Notify user that ticket is taken in work
     try:
         user_id = ticket.user_id
         user_lang = get_user_language(user_id)
@@ -1037,7 +1063,6 @@ async def handle_close_ticket(
     update: Update, context: ContextTypes.DEFAULT_TYPE, data: str
 ) -> None:
     """Handle closing a ticket."""
-    # data приходит как close_confirm:{ticket_id}
     ticket_id = data.split(":")[1]
     admin_lang = get_admin_language()
 
@@ -1104,10 +1129,23 @@ async def handle_reply_ticket(
     context.user_data["reply_ticket_id"] = ticket_id
     context.user_data["state"] = STATE_AWAITING_REPLY
 
-    await update.callback_query.answer()
-    await update.callback_query.message.reply_text(
-        get_text("admin.enter_reply", lang=admin_lang)
+    user_id = ticket.user_id
+    username = getattr(ticket, "username", None)
+
+    if username:
+        target = f"@{username} (ID: {user_id})"
+    else:
+        target = f"ID: {user_id}"
+
+    prompt = get_text(
+        "admin.enter_reply_detailed",
+        lang=admin_lang,
+        user=target,
+        ticket_id=ticket_id,
     )
+
+    await update.callback_query.answer()
+    await update.callback_query.message.reply_text(prompt)
 
 
 async def handle_reply_confirm(
@@ -1185,14 +1223,35 @@ async def handle_reply_edit(
     ticket_id = data.split(":")[1]
     admin_lang = get_admin_language()
 
+    ticket = ticket_service.get_ticket(ticket_id)
+    if not ticket:
+        await update.callback_query.answer(
+            get_text("errors.ticket_not_found", lang=admin_lang),
+            show_alert=True,
+        )
+        return
+
     context.user_data["state"] = STATE_AWAITING_REPLY
     context.user_data["reply_ticket_id"] = ticket_id
     context.user_data["pending_reply_text"] = None
 
-    await update.callback_query.answer()
-    await update.callback_query.message.reply_text(
-        get_text("admin.enter_reply", lang=admin_lang)
+    user_id = ticket.user_id
+    username = getattr(ticket, "username", None)
+
+    if username:
+        target = f"@{username} (ID: {user_id})"
+    else:
+        target = f"ID: {user_id}"
+
+    prompt = get_text(
+        "admin.enter_reply_detailed",
+        lang=admin_lang,
+        user=target,
+        ticket_id=ticket_id,
     )
+
+    await update.callback_query.answer()
+    await update.callback_query.message.reply_text(prompt)
 
 
 async def handle_reply_cancel(

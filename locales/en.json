@@ -137,6 +137,7 @@
     "thanked": "✓ Thanked",
     "reply_instruction": "ℹ️ Use the 'Take in Progress' and 'Reply' buttons in the ticket",
     "enter_reply": "Enter your reply to the user:",
+    "enter_reply_detailed": "Enter your reply to {user} for ticket {ticket_id}:",
     "confirm_reply_prompt": "❓ Send this reply to the user for ticket {ticket_id}?",
     "confirm_reply_yes": "✅ Send",
     "confirm_reply_no": "❌ Cancel",
@@ -146,8 +147,8 @@
     "ticket_closed": "✅ Ticket closed",
     "settings_info": "ℹ️ Bot info",
     "settings_debug": "🛠 Debug info",
-    "info_text": "🤖 Bot: {bot_name}\n🔖 Version: {version}\n📅 Build: {build_date}\n\n🌍 Timezone: {timezone}\n🌐 Default locale: {default_locale}\n\n💾 Backups: {backup_enabled}\n📤 Send backups to Telegram: {backup_telegram}\n⭐ Rating enabled: {rating_enabled}\n⏳ Feedback cooldown: {feedback_cooldown}",
-    "debug_text": "🗂 DATA_DIR: {data_dir}\n📁 BACKUP_DIR: {backup_dir}\n📜 LOG_FILE: {log_file}\n\n🔊 Log level: {log_level}\n💾 Backup interval: {backup_interval_hours} h\n⏱ Auto-close tickets: {auto_close_hours} h",
+    "info_text": "🤖 Bot: {bot_name}\n🔖 Version: {version}\n📅 Build: {build_date}\n\n🌍 Timezone: {timezone}\n🌐 Default locale: {default_locale}\n\n💾 Backups: {backup_enabled}\n📤 Send backups to Telegram: {backup_telegram}\n⭐ Rating enabled: {rating_enabled}\n⏳ Feedback cooldown: {feedback_cooldown}\n📚 Library: python-telegram-bot {ptb_version}",
+    "debug_text": "🗂 DATA_DIR: {data_dir}\n📁 BACKUP_DIR: {backup_dir}\n📜 LOG_FILE: {log_file}\n\n🔊 Log level: {log_level}\n💾 Backup interval: {backup_interval_hours} h\n⏱ Auto-close tickets: {auto_close_hours} h\n\n📦 data.json size: {data_size}\n🧩 Last backup: {last_backup}",
     "confirm_close_title": "❓ Close ticket {ticket_id}?",
     "confirm_close_yes": "✅ Yes, close",
     "confirm_close_no": "❌ Cancel"

@@ -2,7 +2,7 @@
 `
 > Full-featured Telegram bot for ticket management, feedback collection, and customer support automation
 
-![Version](https://img.shields.io/badge/version-2.8.0-blue)
+![Version](https://img.shields.io/badge/version-2.8.1-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 [![Donate](https://img.shields.io/badge/Donate-Telegram%20Tribute-brightgreen)](https://t.me/tribute/app?startapp=dAi3)
@@ -161,8 +161,9 @@ python main.py
 
 ## 📊 Version History
 
-| Version | Date      | Description                                                                  |
+| Version| Date       | Description                                                                  |
 |--------|------------|------------------------------------------------------------------------------|
+| 2.8.1  | 2025-11-24 | 📨 Add admin callbacks separation and update reply edit handler             | 
 | 2.8.0  | 2025-11-22 | 📨 Admin reply confirmation with Send/Edit/Cancel buttons                    |
 | 2.7.0  | 2025-11-18 | ❓ New detailed admin help screen, donate button, minor callbacks cleanup    |
 | 2.6.0  | 2025-11-18 | ⏰ UX for auto-close, “whose turn” indicator, improved inbox & statistics    |

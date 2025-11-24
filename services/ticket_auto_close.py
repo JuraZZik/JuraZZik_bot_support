@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import AUTO_CLOSE_AFTER_HOURS, TIMEZONE
+from config import AUTO_CLOSE_AFTER_HOURS, TIMEZONE, ADMIN_ID
 from storage.data_manager import data_manager
 from services.alerts import alert_service
 from services.tickets import ticket_service
@@ -90,7 +90,7 @@ async def auto_close_inactive_tickets() -> None:
             ticket_id = ticket_info["id"]
             user_id = ticket_info["user_id"]
 
-            # 1) Admin: alert + ticket card
+            # 1) Admin: alert + ticket card (directly to admin chat)
             try:
                 ticket = ticket_service.get_ticket(ticket_id)
                 if ticket:
@@ -110,9 +110,12 @@ async def auto_close_inactive_tickets() -> None:
                         hours=AUTO_CLOSE_AFTER_HOURS,
                     )
 
-                await alert_service.send_alert(text)
+                await alert_service.send_user_message(
+                    user_id=ADMIN_ID,
+                    text=text,
+                )
                 logger.info(
-                    "Sent auto-close alert for ticket %s to admin",
+                    "Sent auto-close alert for ticket %s to admin (direct message)",
                     ticket_id,
                 )
             except Exception as e:

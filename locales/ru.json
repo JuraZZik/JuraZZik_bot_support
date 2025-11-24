@@ -134,6 +134,7 @@
     "thanked": "✓ Поблагодарили",
     "reply_instruction": "ℹ️ Используйте кнопку 'Взять в работу' и 'Ответить' в тикете",
     "enter_reply": "Введите ответ пользователю:",
+    "enter_reply_detailed": "Введите ответ пользователю {user} по тикету {ticket_id}:",
     "confirm_reply_prompt": "❓ Отправить этот ответ пользователю по тикету {ticket_id}?",
     "confirm_reply_yes": "✅ Отправить",
     "confirm_reply_no": "❌ Отмена",
@@ -143,8 +144,8 @@
     "ticket_closed": "✅ Тикет закрыт",
     "settings_info": "ℹ️ Информация о боте",
     "settings_debug": "🛠 Диагностика",
-    "info_text": "🤖 Бот: {bot_name}\n🔖 Версия: {version}\n📅 Сборка: {build_date}\n\n🌍 Часовой пояс: {timezone}\n🌐 Локаль по умолчанию: {default_locale}\n\n💾 Бэкапы: {backup_enabled}\n📤 Отправка бэкапов в Telegram: {backup_telegram}\n⭐ Оценки включены: {rating_enabled}\n⏳ Кулдаун фидбэка: {feedback_cooldown}",
-    "debug_text": "🗂 DATA_DIR: {data_dir}\n📁 BACKUP_DIR: {backup_dir}\n📜 LOG_FILE: {log_file}\n\n🔊 Уровень логов: {log_level}\n💾 Интервал бэкапа: {backup_interval_hours} ч\n⏱ Авто‑закрытие тикетов: {auto_close_hours} ч",
+    "info_text": "🤖 Бот: {bot_name}\n🔖 Версия: {version}\n📅 Сборка: {build_date}\n\n🌍 Часовой пояс: {timezone}\n🌐 Локаль по умолчанию: {default_locale}\n\n💾 Бэкапы: {backup_enabled}\n📤 Отправка бэкапов в Telegram: {backup_telegram}\n⭐ Оценки включены: {rating_enabled}\n⏳ Кулдаун фидбэка: {feedback_cooldown}\n📚 Библиотека: python-telegram-bot {ptb_version}",
+    "debug_text": "🗂 DATA_DIR: {data_dir}\n📁 BACKUP_DIR: {backup_dir}\n📜 LOG_FILE: {log_file}\n\n🔊 Уровень логов: {log_level}\n💾 Интервал бэкапа: {backup_interval_hours} ч\n⏱ Авто‑закрытие тикетов: {auto_close_hours} ч\n\n📦 Размер data.json: {data_size}\n🧩 Последний бэкап: {last_backup}",
     "confirm_close_title": "❓ Закрыть тикет {ticket_id}?",
     "confirm_close_yes": "✅ Да, закрыть",
     "confirm_close_no": "❌ Отмена"
